@@ -1,6 +1,6 @@
 /*NEXUS IRC session BNC, by Subsentient. This software is public domain.*/
 
-/**This file is where most ofthe big stuff is called from.**/
+/**This file is where most of the big stuff is called from. main() is also in here.**/
 #include <stdio.h>
 #include <string.h>
 #include "netcore.h"
@@ -8,37 +8,36 @@
 #include "config.h"
 #include "irc.h"
 
-//Static function prototypes
-static void NEXUS_Init(void);
-
-///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
-static void NEXUS_Init(void)
-{ //Starts networking and whatnot.
-	Net_InitServer(NEXUSConfig.PortNum); //Start up the NEXUS server.
-
-	
-	NEXUS_Loop();
-	
-	return;
-}
-
-///This is where shit gets real.
-void NEXUS_Loop(void)
-{
-}
-
-
 int main(void)
-{
-	const char *const Stringy = "JOIN ##aqu4bot\r\nPRIVMSG ##aqu4bot :Hello from NEXUS HQ!\r\n";
+{ ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
+
+	//Load NEXUS.conf and whatnot
+	printf("Reading configuration... ");
 	if (!Config_ReadConfig())
 	{
 		fprintf(stderr, "Failed to load configuration!\n");
 		return 1;
 	}
+	puts("Done.");
 	
-	IRC_Connect();
-	Net_Write(IRCDescriptor, (void*)Stringy, strlen(Stringy));
+	//Connect to the REAL IRC server.
+	printf("Connecting to IRC server \"%s:%hu\"... ", IRCConfig.Server, IRCConfig.PortNum);
+	if (!IRC_Connect())
+	{
+		fprintf(stderr, "Unable to connect to IRC server!\n");
+		return 1;
+	}
+	puts("Done.");
+	
+	
+	//Bring up the NEXUS pseudo-IRC-server.
+	printf("Bringing up NEXUS server on port %hu... ", NEXUSConfig.PortNum);
+	if (!Net_InitServer(NEXUSConfig.PortNum))
+	{
+		fprintf(stderr, "Failed to bring up NEXUS server on port %hu.\n", NEXUSConfig.PortNum);
+		return 1;
+	}
+	puts("Done.");
 	
 	return 0;
 }

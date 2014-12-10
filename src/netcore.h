@@ -8,14 +8,6 @@
 #include <stdbool.h>
 
 //Structures
-struct ClientTree
-{ //Contains information about what clients are who.
-	int Descriptor; //Network descriptor for this guy.
-	char IP[128]; //His IP address.
-	
-	struct ClientTree *Next, *Prev;
-};
-
 struct NetReadReturn
 {
 	int Status;
@@ -31,5 +23,6 @@ struct NetReadReturn Net_Read(int ClientDescriptor, void *OutStream_, unsigned M
 bool Net_Write(int const ClientDescriptor, void *InMsg, unsigned WriteSize);
 void Net_ShutdownServer(void);
 bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_);
+bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen);
 
 #endif //__NETCORE_HEADER__

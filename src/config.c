@@ -14,7 +14,7 @@
 
 struct IRCConfig IRCConfig;
 
-struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = 256 };
+struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = 256, .PortNum = 6667 };
 
 bool Config_ReadConfig(void)
 {
@@ -30,15 +30,25 @@ bool Config_ReadConfig(void)
 		return false;
 	}
 	
+	if (FileStat.st_size == 0)
+	{
+		fprintf(stderr, "Configuration file is completely empty!\n");\
+		return false;
+	}
+	
 	//Allocate space.
-	Worker = ConfigData = malloc(FileStat.st_size + 1);
+	ConfigData = malloc(FileStat.st_size + 1);
 	
 	//Read in the config file.
 	fread(ConfigData, 1, FileStat.st_size, FD);
 	ConfigData[FileStat.st_size] = '\0';
 	
-	///Parse said config file.
+	//Nuke ending newlines and carriage returns.
+	Worker = ConfigData + FileStat.st_size - 1;
+	while (*Worker == '\n' || *Worker == '\r') *Worker = '\0';
 	
+	///Parse said config file.
+	Worker = ConfigData; 
 	do
 	{
 		char *LineWorker = LineData, *LE = LineData + sizeof LineData - 1;
@@ -46,8 +56,7 @@ bool Config_ReadConfig(void)
 		//Skip past newlines and carriage returns.
 		while (*Worker == '\n' || *Worker == '\r') ++Worker;
 		
-		if (*Worker == '#') continue; //Denotes a comment in config file.
-		
+		if (*Worker == '#') continue;//Denotes a comment in config file.
 		
 		//Read in this line.
 		for (; *Worker != '\n' && *Worker != '\r' && *Worker != '\0' && LineWorker != LE; ++Worker, ++LineWorker)

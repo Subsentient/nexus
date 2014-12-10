@@ -1,8 +1,8 @@
 /*NEXUS IRC session BNC, by Subsentient. This software is public domain.*/
 
 /**This file is responsible for negotiating with the IRC server.
-A lot of this file is *very* similar to aqu4bot's irc.c, and IRC_GetStatusCode() was
-directly taken from aqu4bot.
+A lot of this file is *very* similar to aqu4bot's irc.c, and some functions were
+just torn directly out of aqu4bot.
 **/
 
 #include <stdio.h>
@@ -89,8 +89,7 @@ bool IRC_Connect(void)
 			case IRC_CODE_NICKTAKEN:
 			{ //This presents a problem.
 				fprintf(stderr, "Nickname for IRC server is in use.\n");
-				Net_ShutdownServer();
-				exit(1);
+				return false;
 				break; //Why do I bother
 			}
 		}
@@ -117,3 +116,40 @@ bool IRC_GetStatusCode(const char *Message, int *OutNumber)
 	*OutNumber = atoi(Num);
 	return true;
 }
+
+enum IRCMessageType IRC_GetMessageType(const char *InStream_)
+{ //Another function torn out of aqu4bot.
+	const char *InStream = InStream_;
+	char Command[32];
+	unsigned Inc = 0;
+	
+	if (InStream[0] != ':') return IRCMSG_INVALID;
+	
+	if ((InStream = strchr(InStream, ' ')) == NULL) return IRCMSG_INVALID;
+	++InStream;
+	
+	for (; InStream[Inc] != ' '  && InStream[Inc] != '\0' && Inc < sizeof Command - 1; ++Inc)
+	{ /*Copy in the command.*/
+		Command[Inc] = InStream[Inc];
+	}
+	Command[Inc] = '\0';
+	
+	/*Time for the comparison.*/
+	if (!strcmp(Command, "PRIVMSG")) return IRCMSG_PRIVMSG;
+	else if (!strcmp(Command, "NOTICE")) return IRCMSG_NOTICE;
+	else if (!strcmp(Command, "MODE")) return IRCMSG_MODE;
+	else if (!strcmp(Command, "JOIN")) return IRCMSG_JOIN;
+	else if (!strcmp(Command, "PART")) return IRCMSG_PART;
+	else if (!strcmp(Command, "PING")) return IRCMSG_PING;
+	else if (!strcmp(Command, "PONG")) return IRCMSG_PONG;
+	else if (!strcmp(Command, "NICK")) return IRCMSG_NICK;
+	else if (!strcmp(Command, "QUIT")) return IRCMSG_QUIT;
+	else if (!strcmp(Command, "KICK")) return IRCMSG_KICK;
+	else if (!strcmp(Command, "KILL")) return IRCMSG_KILL;
+	else if (!strcmp(Command, "INVITE")) return IRCMSG_INVITE;
+	else if (!strcmp(Command, "332") || !strcmp(Command, "TOPIC")) return IRCMSG_TOPIC;
+	else if (!strcmp(Command, "333")) return IRCMSG_TOPICORIGIN;
+	else if (!strcmp(Command, "353") || !strcmp(Command, "NAMES")) return IRCMSG_NAMES;
+	else return IRCMSG_UNKNOWN;
+}
+

@@ -16,91 +16,13 @@
 #include <fcntl.h>
 #include "netcore.h"
 #include "config.h"
+#include "server.h"
 
 /*Globals*/
 int ServerDescriptor, IRCDescriptor;
 static int SocketFamily;
-static struct ClientTree *ClientTreeCore;
 
 /*Functions*/
-struct ClientTree *ClientTree_Add(const struct ClientTree *const InStruct)
-{
-	struct ClientTree *Worker = ClientTreeCore, *TempNext, *TempPrev;
-	
-	if (!ClientTreeCore)
-	{
-		Worker = ClientTreeCore = calloc(1, sizeof(struct ClientTree)); //use calloc to zero it out
-	}
-	else
-	{
-		while (Worker->Next) Worker = Worker->Next;
-		Worker->Next = calloc(1, sizeof(struct ClientTree));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
-	}
-	
-	TempNext = Worker->Next;
-	TempPrev = Worker->Prev;
-	
-	*Worker = *InStruct;
-	
-	Worker->Next = TempNext;
-	Worker->Prev = TempPrev;
-	
-	return Worker;
-}
-
-
-void ClientTree_Shutdown(void)
-{
-	struct ClientTree *Worker = ClientTreeCore, *Next;
-
-	for (; Worker; Worker = Next)
-	{
-		Next = Worker->Next;
-		free(Worker);
-	}
-	
-	ClientTreeCore = NULL;
-}
-
-bool ClientTree_Del(const int Descriptor)
-{
-	struct ClientTree *Worker = ClientTreeCore;
-	
-	if (!ClientTreeCore) return false;
-	
-	for (; Worker; Worker = Worker->Next)
-	{
-		if (Worker->Descriptor == Descriptor)
-		{ //Match.
-			if (Worker == ClientTreeCore)
-			{
-				if (Worker->Next)
-				{ //We're the first one but there are others ahead of us.
-					ClientTreeCore = Worker->Next;
-					ClientTreeCore->Prev = NULL;
-					free(Worker);
-				}
-				else
-				{ //Just us.
-					free(Worker);
-					ClientTreeCore = NULL;
-				}
-			}
-			else
-			{
-				Worker->Prev->Next = Worker->Next;
-				if (Worker->Next) Worker->Next->Prev = Worker->Prev;
-				free(Worker);
-			}
-			
-			return true;
-		}
-	}
-	
-	return false;
-}
 
 struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 {
@@ -254,19 +176,18 @@ void Net_ShutdownServer(void)
 		close(Worker->Descriptor);
 	}
 	
-	ClientTree_Shutdown(); //Free list of clients.
+	Server_ClientTree_Shutdown(); //Free list of clients.
 	close(ServerDescriptor); //Close the main server socket.
 	ServerDescriptor = 0;
 }
 
 //We put this in our main loop to scan for clients who want to connect.
-bool Net_AcceptClients(void)
+bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen)
 {
 	struct sockaddr ClientInfo;
 	struct sockaddr_in Addr;
 	socklen_t SockaddrSize = sizeof(struct sockaddr);
 	socklen_t AddrSize = sizeof Addr;
-	char AddrBuf[128];
 	int ClientDescriptor = 0;
 	
 	
@@ -284,7 +205,6 @@ bool Net_AcceptClients(void)
 		{ //Something more serious than no client.
 			fprintf(stderr, "Failed to accept()!\n");
 			Net_ShutdownServer();
-			ClientTree_Shutdown();
 			exit(1);
 		}
 	}
@@ -293,19 +213,9 @@ bool Net_AcceptClients(void)
 	//Get client IP.
 	memset(&Addr, 0, AddrSize);
 	getpeername(ClientDescriptor, (void*)&Addr, &AddrSize);
-	inet_ntop(SocketFamily, (void*)&Addr.sin_addr, AddrBuf, sizeof AddrBuf);
+	inet_ntop(SocketFamily, (void*)&Addr.sin_addr, OutIPAddr, IPAddrMaxLen); //Copy it into OutIPAddr.
 
-	//Add them to the list of known clients.
-	
-	//First we need to create a temp structure for this purpose.
-	struct ClientTree TempClient = { ClientDescriptor }; //So, I don't deal with C99 very often,
-							//and I guess there *are* times when putting a declaration beyond the block start is a good idea.
-
-	strncpy(TempClient.IP, AddrBuf, sizeof TempClient.IP - 1);
-	TempClient.IP[sizeof TempClient.IP - 1] = '\0';
-	
-	//Then add them to the list.
-	ClientTree_Add(&TempClient);
+	*OutDescriptor = ClientDescriptor; //Give them their descriptor.
 
 	return true;
 }
