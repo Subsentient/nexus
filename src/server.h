@@ -24,6 +24,7 @@ bool Server_ClientTree_Del(const int Descriptor);
 void Server_ClientTree_Shutdown(void);
 bool Server_ForwardToAll(const char *const InStream);
 void Server_Loop(void);
+void Server_SendQuit(const int Descriptor);
 
 //Globals
 extern struct ClientTree *ClientTreeCore;

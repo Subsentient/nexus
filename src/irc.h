@@ -37,5 +37,8 @@ enum IRCMessageType
 bool IRC_GetStatusCode(const char *Message, int *OutNumber);
 bool IRC_Connect(void);
 void IRC_NickChange(const char *Nick);
+void IRC_Loop(void);
+bool IRC_Disconnect(void);
+
 
 #endif //__IRC_HEADER__

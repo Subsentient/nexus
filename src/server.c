@@ -12,7 +12,7 @@
 #include "netcore.h"
 #include "config.h"
 
-/**Specifies how we talk to clients and handles stuff like that.**/
+/**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
 #define NEXUS_FAKEHOST "NEXUS"
 
@@ -123,9 +123,24 @@ bool Server_ForwardToAll(const char *const InStream)
 	
 	for (; Worker; Worker = Worker->Next)
 	{
-		Net_Write(Worker->Descriptor, (void*)InStream, strlen(InStream));
+		Net_Write(Worker->Descriptor, InStream, strlen(InStream));
 	}
 	return true;
+}
+
+void Server_SendQuit(const int Descriptor)
+{ //Tells all clients to quit.
+	struct ClientTree *Worker = ClientTreeCore;
+	char OutBuf[2048];
+	
+	for (; Worker; Worker = Worker->Next)
+	{
+		//If not on "everyone" mode we check if the descriptor matches.
+		if (Descriptor != -1 && Descriptor != Worker->Descriptor) continue; 
+		
+		snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Quit forced by NEXUS\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP);
+		Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
+	}
 }
 
 void Server_SendIRCWelcome(const int ClientDescriptor)

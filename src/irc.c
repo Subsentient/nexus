@@ -1,6 +1,6 @@
 /*NEXUS IRC session BNC, by Subsentient. This software is public domain.*/
 
-/**This file is responsible for negotiating with the IRC server.
+/**This file is responsible for negotiating with the real IRC server.
 A lot of this file is *very* similar to aqu4bot's irc.c, and some functions were
 just torn directly out of aqu4bot.
 **/
@@ -15,6 +15,7 @@ just torn directly out of aqu4bot.
 #include "netcore.h"
 #include "config.h"
 #include "irc.h"
+#include "server.h"
 
 void IRC_NickChange(const char *Nick)
 {
@@ -153,3 +154,41 @@ enum IRCMessageType IRC_GetMessageType(const char *InStream_)
 	else return IRCMSG_UNKNOWN;
 }
 
+bool IRC_Disconnect(void)
+{
+	return !close(IRCDescriptor);
+}
+
+//Where all IRC data processing begins.
+void IRC_Loop(void)
+{
+	struct NetReadReturn NRR;
+	char IRCBuf[2048];
+	
+	//Check IRC for data.
+	NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
+	
+	if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
+	{ //Error.
+		char OutBuf[2048];
+		
+		IRC_Disconnect();
+		
+		//Tell everyone what happened.
+		snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
+		Server_ForwardToAll(OutBuf);
+		
+		Server_SendQuit(-1); //Now make them quit.
+		Net_ShutdownServer();
+		
+		exit(1);
+	}
+	else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
+	{ //No data from the IRC server.
+		return;
+	}
+	
+	
+	//if we get this far, we got data.
+	
+}
