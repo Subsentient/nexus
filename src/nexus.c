@@ -7,6 +7,7 @@
 #include "nexus.h"
 #include "config.h"
 #include "irc.h"
+#include "server.h"
 
 int main(void)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
@@ -38,6 +39,8 @@ int main(void)
 		return 1;
 	}
 	puts("Done.");
+	
+	while(1) Server_Loop();
 	
 	return 0;
 }

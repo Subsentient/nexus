@@ -50,10 +50,15 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 
 	} while (++Inc, Status > 0 && Inc < MaxLength);
 	
-	if (IsText)
-	{ //Delete the \r\n at the end since it really does us no good.
-		*OutStream = '\0';
-		if (*(OutStream - 1) == '\r') *(OutStream - 1) = '\0';
+	if (IsText && OutStream > (unsigned char*)OutStream_)
+	{
+		*OutStream = '\0'; //Null terminate.
+		
+		OutStream = (unsigned char*)OutStream_ + strlen(OutStream_) - 1;
+		
+		//Kill ending whitespace.
+		while (*OutStream == '\r' || *OutStream == '\n') *OutStream-- = '\0';
+		
 	}
 
 ReturnTime:
@@ -62,7 +67,7 @@ ReturnTime:
 	return ReturnVal;
 }
 
-bool Net_Write(int const Descriptor, void *InMsg, unsigned WriteSize)
+bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 {
 	unsigned Transferred = 0, TotalTransferred = 0;
 

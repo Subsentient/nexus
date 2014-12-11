@@ -9,8 +9,10 @@
 #include <stdlib.h>
 #include "config.h"
 
-#define CONFIGDIR "/geekhut/.nexus/"
-#define CONFIGFILE "NEXUS.conf"
+#define CONFIG_DIR ".nexus"
+#define CONFIG_FILE "NEXUS.conf"
+
+static char ConfigFilePath[1024]; //We need to get the user's home directory.
 
 struct IRCConfig IRCConfig;
 
@@ -18,14 +20,17 @@ struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = 256, .PortNum = 6667 }
 
 bool Config_ReadConfig(void)
 {
-	FILE *FD = fopen(CONFIGDIR CONFIGFILE, "rb");
+	FILE *FD = NULL;
 	struct stat FileStat;
 	char *ConfigData = NULL, *Worker = NULL;
 	char LineData[1024]; //Should be enough for anybody
 	const char *CopyFrom = NULL; //Just handy for getting values of config
 	unsigned LineNum = 1;
 	
-	if (FD == NULL || stat(CONFIGDIR CONFIGFILE, &FileStat) != 0)
+	//We need to determine the path.
+	snprintf(ConfigFilePath, sizeof ConfigFilePath, "%s/" CONFIG_DIR "/" CONFIG_FILE, getenv("HOME"));
+	
+	if ((FD = fopen(ConfigFilePath, "r")) == NULL || stat(ConfigFilePath, &FileStat) != 0)
 	{
 		return false;
 	}
@@ -45,7 +50,7 @@ bool Config_ReadConfig(void)
 	
 	//Nuke ending newlines and carriage returns.
 	Worker = ConfigData + FileStat.st_size - 1;
-	while (*Worker == '\n' || *Worker == '\r') *Worker = '\0';
+	while (*Worker == '\n' || *Worker == '\r') *Worker-- = '\0';
 	
 	///Parse said config file.
 	Worker = ConfigData; 
@@ -123,7 +128,7 @@ bool Config_ReadConfig(void)
 		}
 		else
 		{
-			fprintf(stderr, "Bad config value \"%s\" on line %u in \"" CONFIGDIR CONFIGFILE "\"\n", LineData, LineNum);
+			fprintf(stderr, "Bad config value \"%s\" on line %u in \"%s\"\n", LineData, LineNum, ConfigFilePath);
 			continue;
 		}
 	} while (++LineNum, (Worker = strpbrk(Worker, "\r\n")));
