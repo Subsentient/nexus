@@ -17,6 +17,27 @@ struct ClientTree
 	struct ClientTree *Next, *Prev;
 };
 
+enum ServerMessageType
+{
+	SERVERMSG_INVALID = -1,
+	SERVERMSG_UNKNOWN,
+	SERVERMSG_PRIVMSG,
+	SERVERMSG_NOTICE,
+	SERVERMSG_MODE,
+	SERVERMSG_JOIN,
+	SERVERMSG_PART,
+	SERVERMSG_PING,
+	SERVERMSG_PONG,
+	SERVERMSG_QUIT,
+	SERVERMSG_KICK,
+	SERVERMSG_KILL,
+	SERVERMSG_NICK,
+	SERVERMSG_INVITE,
+	SERVERMSG_TOPIC,
+	SERVERMSG_TOPICORIGIN,
+	SERVERMSG_NAMES
+};
+
 //Prototypes.
 struct ClientTree *Server_ClientTree_Lookup(const int Descriptor);
 struct ClientTree *Server_ClientTree_Add(const struct ClientTree *const InStruct);
@@ -25,6 +46,7 @@ void Server_ClientTree_Shutdown(void);
 bool Server_ForwardToAll(const char *const InStream);
 void Server_Loop(void);
 void Server_SendQuit(const int Descriptor);
+enum ServerMessageType Server_GetMessageType(const char *InStream_);
 
 //Globals
 extern struct ClientTree *ClientTreeCore;

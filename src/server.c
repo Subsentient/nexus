@@ -11,6 +11,7 @@
 #include "server.h"
 #include "netcore.h"
 #include "config.h"
+#include "nexus.h"
 
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
@@ -129,7 +130,7 @@ bool Server_ForwardToAll(const char *const InStream)
 }
 
 void Server_SendQuit(const int Descriptor)
-{ //Tells all clients to quit.
+{ //Tells all clients or just one client to quit
 	struct ClientTree *Worker = ClientTreeCore;
 	char OutBuf[2048];
 	
@@ -138,7 +139,7 @@ void Server_SendQuit(const int Descriptor)
 		//If not on "everyone" mode we check if the descriptor matches.
 		if (Descriptor != -1 && Descriptor != Worker->Descriptor) continue; 
 		
-		snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Quit forced by NEXUS\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP);
+		snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP);
 		Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
 	}
 }
@@ -242,9 +243,70 @@ struct ClientTree *Server_AcceptLoop(void)
 	return Client;
 }
 
+
+enum ServerMessageType Server_GetMessageType(const char *InStream_)
+{ //Another function torn out of aqu4bot.
+	const char *InStream = InStream_;
+	char Command[32];
+	unsigned Inc = 0;
+	
+	for (; InStream[Inc] != ' '  && InStream[Inc] != '\0' && Inc < sizeof Command - 1; ++Inc)
+	{ /*Copy in the command.*/
+		Command[Inc] = InStream[Inc];
+	}
+	Command[Inc] = '\0';
+	
+	/*Time for the comparison.*/
+	if (!strcmp(Command, "PRIVMSG")) return SERVERMSG_PRIVMSG;
+	else if (!strcmp(Command, "NOTICE")) return SERVERMSG_NOTICE;
+	else if (!strcmp(Command, "MODE")) return SERVERMSG_MODE;
+	else if (!strcmp(Command, "JOIN")) return SERVERMSG_JOIN;
+	else if (!strcmp(Command, "PART")) return SERVERMSG_PART;
+	else if (!strcmp(Command, "PING")) return SERVERMSG_PING;
+	else if (!strcmp(Command, "PONG")) return SERVERMSG_PONG;
+	else if (!strcmp(Command, "NICK")) return SERVERMSG_NICK;
+	else if (!strcmp(Command, "QUIT")) return SERVERMSG_QUIT;
+	else if (!strcmp(Command, "KICK")) return SERVERMSG_KICK;
+	else if (!strcmp(Command, "KILL")) return SERVERMSG_KILL;
+	else if (!strcmp(Command, "INVITE")) return SERVERMSG_INVITE;
+	else if (!strcmp(Command, "TOPIC")) return SERVERMSG_TOPIC;
+	else if (!strcmp(Command, "333")) return SERVERMSG_TOPICORIGIN;
+	else if (!strcmp(Command, "NAMES")) return SERVERMSG_NAMES;
+	else return SERVERMSG_UNKNOWN;
+}
+
+
 void Server_Loop(void)
-{ //main loop for the NEXUS server.	
+{ //main loop for the NEXUS server.
+	struct ClientTree *Worker = NULL;
+	struct NetReadReturn NRR;
+	char MessageBuf[2048];
+	
 	Server_AcceptLoop();
-	
-	
+
+LoopStart:
+	Worker = ClientTreeCore; //We set it here and not at the initializer for a reason. Use your brain.
+
+	for (; Worker; Worker = Worker->Next)
+	{
+		NRR = Net_Read(Worker->Descriptor, MessageBuf, sizeof MessageBuf, true);
+		
+		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
+		{ //Error. DELETE them.
+			close(Worker->Descriptor); //Close the socket.
+			Server_ClientTree_Del(Worker->Descriptor);
+			goto LoopStart;
+		}
+		else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
+		{ //No data.
+			usleep(1500);
+			continue;
+		}
+		
+		
+		//We got data.
+		puts(MessageBuf);
+		NEXUS_NEXUS2IRC(MessageBuf, Worker);
+		goto LoopStart; //We might have had our client deleted, so go to beginning.
+	}
 }

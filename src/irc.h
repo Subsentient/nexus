@@ -6,7 +6,7 @@
 #define __IRC_HEADER__
 
 #include <stdbool.h>
-
+#include "server.h"
 #define IRC_CODE_OK 1
 #define IRC_CODE_NICKTAKEN 433
 
@@ -38,7 +38,9 @@ bool IRC_GetStatusCode(const char *Message, int *OutNumber);
 bool IRC_Connect(void);
 void IRC_NickChange(const char *Nick);
 void IRC_Loop(void);
+void IRC_Pong(const char *Param);
 bool IRC_Disconnect(void);
-
-
+enum IRCMessageType IRC_GetMessageType(const char *InStream_);
+bool IRC_GetMessageData(const char *Message, char *OutData);
+bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientTree *const Client);
 #endif //__IRC_HEADER__

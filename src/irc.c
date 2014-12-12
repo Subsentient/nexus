@@ -14,8 +14,9 @@ just torn directly out of aqu4bot.
 
 #include "netcore.h"
 #include "config.h"
-#include "irc.h"
 #include "server.h"
+#include "irc.h"
+#include "nexus.h"
 
 void IRC_NickChange(const char *Nick)
 {
@@ -26,7 +27,7 @@ void IRC_NickChange(const char *Nick)
 }
 
 bool IRC_Connect(void)
-{ //After connecting to the IRC server, this function
+{
 	char UserString[1024];
 	bool ServerConnectOK = false;
 	char MessageBuf[2048];
@@ -185,10 +186,52 @@ void IRC_Loop(void)
 	}
 	else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 	{ //No data from the IRC server.
+		usleep(1500);
 		return;
 	}
 	
-	
+	printf("%s\n",IRCBuf);
 	//if we get this far, we got data.
+	NEXUS_IRC2NEXUS(IRCBuf);
+}
+
+void IRC_Pong(const char *Param)
+{ //Replies to IRC server's ping request.
+	char PingMsg[1024];
 	
+	snprintf(PingMsg, sizeof PingMsg, "%s\r\n", Param);
+	
+	*strchr(PingMsg, 'I') = 'O'; //Turn PING to PONG
+	
+	Net_Write(IRCDescriptor, PingMsg, strlen(PingMsg));
+}
+
+bool IRC_GetMessageData(const char *Message, char *OutData)
+{
+	const char *Worker = Message;
+	
+	if (!(Worker = strchr(Worker, ' '))) return false;
+	++Worker;
+	
+	if (!(Worker = strchr(Worker, ' '))) return false;
+	++Worker;
+	
+	if (*Worker == ':') ++Worker; /*This might cause problems somewhere, but I hope not. Saves work fiddling with server specific stuff.*/
+		
+	strcpy(OutData, Worker);
+	return true;
+}
+
+
+bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientTree *const Client)
+{ //Changes a message's origin to the client's.
+	const char *Jump = strchr(InStream, ' ');
+	
+	if (!Jump) return false;
+	
+	while (*Jump == ' ') ++Jump; //Skip past the spaces.
+	
+	snprintf(OutStream, OutStreamSize, ":%s!%s@%s %s", IRCConfig.Nick, Client->Ident, Client->IP, Jump);
+	
+	return true;
 }
