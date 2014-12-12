@@ -144,12 +144,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			break;
 		}
-		case IRCMSG_PING:
-		{ //The IRC server pinged us.
-			IRC_Pong(Message);
-			break;
-		}
-			
 	}
 }
 

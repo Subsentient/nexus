@@ -191,7 +191,15 @@ void IRC_Loop(void)
 	}
 	
 	printf("%s\n",IRCBuf);
+	
 	//if we get this far, we got data.
+	if (!strncmp(IRCBuf, "PING", sizeof "PING" - 1))
+	{ //Reply to ping and exit.
+		IRC_Pong(IRCBuf);
+		return;
+	}
+	
+	//Not a ping, we have real work to do.
 	NEXUS_IRC2NEXUS(IRCBuf);
 }
 

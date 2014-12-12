@@ -270,7 +270,6 @@ enum ServerMessageType Server_GetMessageType(const char *InStream_)
 	else if (!strcmp(Command, "KILL")) return SERVERMSG_KILL;
 	else if (!strcmp(Command, "INVITE")) return SERVERMSG_INVITE;
 	else if (!strcmp(Command, "TOPIC")) return SERVERMSG_TOPIC;
-	else if (!strcmp(Command, "333")) return SERVERMSG_TOPICORIGIN;
 	else if (!strcmp(Command, "NAMES")) return SERVERMSG_NAMES;
 	else return SERVERMSG_UNKNOWN;
 }
