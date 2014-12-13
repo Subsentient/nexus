@@ -18,13 +18,13 @@
 #define NEXUS_FAKEHOST "NEXUS"
 
 //Globals
-struct ClientTree *ClientTreeCore;
+struct ClientList *ClientListCore;
 
 //Functions
 
-struct ClientTree *Server_ClientTree_Lookup(const int Descriptor)
+struct ClientList *Server_ClientList_Lookup(const int Descriptor)
 {
-	struct ClientTree *Worker = ClientTreeCore;
+	struct ClientList *Worker = ClientListCore;
 	
 	for (; Worker; Worker = Worker->Next)
 	{
@@ -37,18 +37,18 @@ struct ClientTree *Server_ClientTree_Lookup(const int Descriptor)
 	return NULL;
 }
 
-struct ClientTree *Server_ClientTree_Add(const struct ClientTree *const InStruct)
+struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct)
 {
-	struct ClientTree *Worker = ClientTreeCore, *TempNext, *TempPrev;
+	struct ClientList *Worker = ClientListCore, *TempNext, *TempPrev;
 	
-	if (!ClientTreeCore)
+	if (!ClientListCore)
 	{
-		Worker = ClientTreeCore = calloc(1, sizeof(struct ClientTree)); //use calloc to zero it out
+		Worker = ClientListCore = calloc(1, sizeof(struct ClientList)); //use calloc to zero it out
 	}
 	else
 	{
 		while (Worker->Next) Worker = Worker->Next;
-		Worker->Next = calloc(1, sizeof(struct ClientTree));
+		Worker->Next = calloc(1, sizeof(struct ClientList));
 		Worker->Next->Prev = Worker;
 		Worker = Worker->Next;
 	}
@@ -65,9 +65,9 @@ struct ClientTree *Server_ClientTree_Add(const struct ClientTree *const InStruct
 }
 
 
-void Server_ClientTree_Shutdown(void)
+void Server_ClientList_Shutdown(void)
 {
-	struct ClientTree *Worker = ClientTreeCore, *Next;
+	struct ClientList *Worker = ClientListCore, *Next;
 
 	for (; Worker; Worker = Next)
 	{
@@ -75,31 +75,31 @@ void Server_ClientTree_Shutdown(void)
 		free(Worker);
 	}
 	
-	ClientTreeCore = NULL;
+	ClientListCore = NULL;
 }
 
-bool Server_ClientTree_Del(const int Descriptor)
+bool Server_ClientList_Del(const int Descriptor)
 {
-	struct ClientTree *Worker = ClientTreeCore;
+	struct ClientList *Worker = ClientListCore;
 	
-	if (!ClientTreeCore) return false;
+	if (!ClientListCore) return false;
 	
 	for (; Worker; Worker = Worker->Next)
 	{
 		if (Worker->Descriptor == Descriptor)
 		{ //Match.
-			if (Worker == ClientTreeCore)
+			if (Worker == ClientListCore)
 			{
 				if (Worker->Next)
 				{ //We're the first one but there are others ahead of us.
-					ClientTreeCore = Worker->Next;
-					ClientTreeCore->Prev = NULL;
+					ClientListCore = Worker->Next;
+					ClientListCore->Prev = NULL;
 					free(Worker);
 				}
 				else
 				{ //Just us.
 					free(Worker);
-					ClientTreeCore = NULL;
+					ClientListCore = NULL;
 				}
 			}
 			else
@@ -118,7 +118,7 @@ bool Server_ClientTree_Del(const int Descriptor)
 
 bool Server_ForwardToAll(const char *const InStream)
 { //This function sends the provided text stream to all clients. Very simple.
-	struct ClientTree *Worker = ClientTreeCore;
+	struct ClientList *Worker = ClientListCore;
 	
 	if (!Worker) return false;
 	
@@ -131,7 +131,7 @@ bool Server_ForwardToAll(const char *const InStream)
 
 void Server_SendQuit(const int Descriptor)
 { //Tells all clients or just one client to quit
-	struct ClientTree *Worker = ClientTreeCore;
+	struct ClientList *Worker = ClientListCore;
 	char OutBuf[2048];
 	
 	for (; Worker; Worker = Worker->Next)
@@ -147,7 +147,7 @@ void Server_SendQuit(const int Descriptor)
 void Server_SendIRCWelcome(const int ClientDescriptor)
 {
 	char OutBuf[2048];
-	struct ClientTree *Client = Server_ClientTree_Lookup(ClientDescriptor);
+	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor);
 	
 	if (!Client) return;
 	
@@ -166,12 +166,12 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	
 }
 
-struct ClientTree *Server_AcceptLoop(void)
+struct ClientList *Server_AcceptLoop(void)
 {
-	struct ClientTree TempClient;
+	struct ClientList TempClient;
 	struct NetReadReturn NRR;
 	char InBuf[2048];
-	struct ClientTree *Client = NULL;
+	struct ClientList *Client = NULL;
 	bool UserProvided = false, NickProvided = false;
 		
 	if (!Net_AcceptClient(&TempClient.Descriptor, TempClient.IP, sizeof TempClient.IP))
@@ -181,7 +181,7 @@ struct ClientTree *Server_AcceptLoop(void)
 
 
 	///Apparently there is a client.
-	Client = Server_ClientTree_Add(&TempClient); //Store their information.
+	Client = Server_ClientList_Add(&TempClient); //Store their information.
 
 	/**Continuously try to read their replies until we get them.**/
 	while (!UserProvided || !NickProvided)
@@ -193,7 +193,7 @@ struct ClientTree *Server_AcceptLoop(void)
 			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
 			{ //We lost them.
 				close(Client->Descriptor); //Close their connection.
-				Server_ClientTree_Del(Client->Descriptor); //Delete their record.
+				Server_ClientList_Del(Client->Descriptor); //Delete their record.
 				return NULL;
 			}
 			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
@@ -277,14 +277,14 @@ enum ServerMessageType Server_GetMessageType(const char *InStream_)
 
 void Server_Loop(void)
 { //main loop for the NEXUS server.
-	struct ClientTree *Worker = NULL;
+	struct ClientList *Worker = NULL;
 	struct NetReadReturn NRR;
 	char MessageBuf[2048];
 	
 	Server_AcceptLoop();
 
 LoopStart:
-	Worker = ClientTreeCore; //We set it here and not at the initializer for a reason. Use your brain.
+	Worker = ClientListCore; //We set it here and not at the initializer for a reason. Use your brain.
 
 	for (; Worker; Worker = Worker->Next)
 	{
@@ -293,7 +293,7 @@ LoopStart:
 		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
 		{ //Error. DELETE them.
 			close(Worker->Descriptor); //Close the socket.
-			Server_ClientTree_Del(Worker->Descriptor);
+			Server_ClientList_Del(Worker->Descriptor);
 			goto LoopStart;
 		}
 		else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)

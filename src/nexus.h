@@ -10,6 +10,6 @@
 
 void NEXUS_Loop(void);
 void NEXUS_IRC2NEXUS(const char *Message);
-void NEXUS_NEXUS2IRC(const char *Message, struct ClientTree *const Client);
+void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client);
 
 #endif //__NEXUS_HEADER__

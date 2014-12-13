@@ -10,6 +10,7 @@
 #include "config.h"
 #include "irc.h"
 #include "server.h"
+#include "state.h"
 
 int main(void)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
@@ -52,7 +53,7 @@ int main(void)
 }
 
 /*Processes data from a client and forwards it to the IRC server.*/
-void NEXUS_NEXUS2IRC(const char *Message, struct ClientTree *const Client)
+void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 {
 	const enum ServerMessageType MsgType = Server_GetMessageType(Message);
 	
@@ -72,7 +73,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientTree *const Client)
 		{
 			Server_SendQuit(Client->Descriptor);
 			close(Client->Descriptor);
-			Server_ClientTree_Del(Client->Descriptor);
+			Server_ClientList_Del(Client->Descriptor);
 			return;
 		}
 	}
@@ -102,7 +103,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			char NickTest[64];
 			unsigned Inc = 0;
 			const char *Test = Message + 1; //Skip past the ':' at the start.
-			struct ClientTree *Worker = ClientTreeCore;
+			struct ClientList *Worker = ClientListCore;
 			
 			for (; Test[Inc] != '!' && Test[Inc] != ' ' && Test[Inc] != '\0' && Inc < sizeof NickTest - 1; ++Inc)
 			{ //Copy in the nick for this join/part message.
@@ -124,13 +125,42 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				
 				break;
 				
-				if (MsgType == IRCMSG_NICK)
-				{ //if it's our nickname, we need to remember that it's been changed.
-					char NewNick[sizeof IRCConfig.Nick];
-					
-					//update the nick.
-					IRC_GetMessageData(Message, NewNick);
-					strcpy(IRCConfig.Nick, *NewNick == ':' ? NewNick + 1 : NewNick);
+				switch (MsgType)
+				{ //Some specific stuff we need to do
+					case IRCMSG_NICK:
+					{ //if it's our nickname, we need to remember that it's been changed.
+						char NewNick[2048];
+						
+						//update the nick.
+						IRC_GetMessageData(Message, NewNick);
+						strcpy(IRCConfig.Nick, *NewNick == ':' ? NewNick + 1 : NewNick);
+						break;
+					}
+					case IRCMSG_JOIN:
+					{ //We joined a channel.
+						char NewChannel[2048];
+						struct ChannelList *Chan;
+						IRC_GetMessageData(Message, NewChannel);
+						
+						Chan = State_AddChannel(NewChannel);
+						State_AddUserToChannel(IRCConfig.Nick, 0, Chan);
+						break;
+					}
+					case IRCMSG_PART:
+					{ //We left a channel.
+						char GoneChannel[2048], *Search;
+						
+						IRC_GetMessageData(Message, GoneChannel);
+						
+						//Delete whatever part message they may have placed. We don't care.
+						if ((Search = strchr(GoneChannel, ' '))) *Search = '\0';
+						
+						//Now delete this parted channel.
+						State_DelChannel(GoneChannel);
+						break;
+					}
+					default:
+						break;
 				}
 			}
 			
@@ -142,6 +172,62 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
 			}
 			
+			
+			switch (MsgType)
+			{
+				char Nick[64], Ident[64], Mask[64];
+				
+				case IRCMSG_NICK:
+				{ //Change the nick for them in all channels they exist in.
+					struct ChannelList *Worker = ChannelListCore;
+					char NewNick_[64], *NewNick = NewNick_;
+					
+					//Get their old nick.
+					IRC_BreakdownNick(Message, Nick, Ident, Mask);
+					IRC_GetMessageData(Message, NewNick_);
+					
+					if (*NewNick == ':') ++NewNick;
+					
+					for (; Worker; Worker = Worker->Next)
+					{
+						struct UserList *User = State_GetUserInChannel(Nick, Worker);
+						char Symbol = 0;
+						
+						//Doesn't exist in that channel.
+						if (!User) continue;
+						
+						Symbol = User->Symbol; //Back up the symbol, e.g. @ or +.
+						State_DelUserFromChannel(Nick, Worker); //Delete the old nickname.
+						State_AddUserToChannel(NewNick, Symbol, Worker); //Create the new one.
+					}
+					break;
+				}
+				case IRCMSG_PART:
+				case IRCMSG_JOIN:
+				{ //Add this user to the channel.
+					char DaChannel[512], *Search;
+					struct ChannelList *ChannelStruct;
+					
+					IRC_BreakdownNick(Message, Nick, Ident, Mask);
+					IRC_GetMessageData(Message, DaChannel);
+					
+					if ((Search = strchr(DaChannel, ' '))) *Search = '\0';
+					
+					if (!(ChannelStruct = State_LookupChannel(DaChannel))) break;
+
+					if (MsgType == IRCMSG_JOIN)
+					{
+						State_AddUserToChannel(Nick, 0, ChannelStruct);
+					}
+					else
+					{
+						State_DelUserFromChannel(Nick, ChannelStruct);
+					}
+					break;
+				}
+				default:
+					break;
+			}
 			break;
 		}
 	}

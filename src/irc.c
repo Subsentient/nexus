@@ -231,7 +231,7 @@ bool IRC_GetMessageData(const char *Message, char *OutData)
 }
 
 
-bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientTree *const Client)
+bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientList *const Client)
 { //Changes a message's origin to the client's.
 	const char *Jump = strchr(InStream, ' ');
 	
@@ -240,6 +240,62 @@ bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigne
 	while (*Jump == ' ') ++Jump; //Skip past the spaces.
 	
 	snprintf(OutStream, OutStreamSize, ":%s!%s@%s %s", IRCConfig.Nick, Client->Ident, Client->IP, Jump);
+	
+	return true;
+}
+
+bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut)
+{
+	char ComplexNick[128], *Worker = ComplexNick;
+	unsigned Inc = 0;
+	
+	for (; Message[Inc] != ' ' && Message[Inc] != '\0'; ++Inc)
+	{
+		ComplexNick[Inc] = Message[Inc];
+	}
+	ComplexNick[Inc] = '\0';
+	
+	if (*Worker == ':') ++Worker;
+	
+	for (Inc = 0; Worker[Inc] != '!' &&  Worker[Inc] != ' ' && Worker[Inc] != '\0'; ++Inc)
+	{
+		NickOut[Inc] = Worker[Inc];
+	}
+	NickOut[Inc] = '\0';
+	
+	if (Worker[Inc] != '!')
+	{
+		*NickOut = 0;
+		*IdentOut = 0;
+		*MaskOut = 0;
+		return false;
+	}
+	
+	Worker += Inc + 1;
+	
+	if (*Worker == '~') ++Worker;
+	
+	for (Inc = 0; Worker[Inc] != '@' && Worker[Inc] != ' ' && Worker[Inc] != '\0'; ++Inc)
+	{
+		IdentOut[Inc] = Worker[Inc];
+	}
+	IdentOut[Inc] = '\0';
+	
+	if (Worker[Inc] != '@')
+	{
+		*NickOut = 0;
+		*IdentOut = 0;
+		*MaskOut = 0;
+		return false;
+	}
+	
+	Worker += Inc + 1;
+	
+	for (Inc = 0; Worker[Inc] != ' ' && Worker[Inc] != '\0'; ++Inc)
+	{
+		MaskOut[Inc] = Worker[Inc];
+	}
+	MaskOut[Inc] = '\0';
 	
 	return true;
 }

@@ -173,7 +173,7 @@ bool Net_InitServer(unsigned short PortNum)
 
 void Net_ShutdownServer(void)
 {
-	struct ClientTree *Worker = ClientTreeCore;
+	struct ClientList *Worker = ClientListCore;
 	
 	//Close all connections to clients.
 	for (; Worker; Worker = Worker->Next)
@@ -181,7 +181,7 @@ void Net_ShutdownServer(void)
 		close(Worker->Descriptor);
 	}
 	
-	Server_ClientTree_Shutdown(); //Free list of clients.
+	Server_ClientList_Shutdown(); //Free list of clients.
 	close(ServerDescriptor); //Close the main server socket.
 	ServerDescriptor = 0;
 }
