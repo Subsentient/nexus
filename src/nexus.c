@@ -95,8 +95,10 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			goto ForwardVerbatim;
 		}
 		case SERVERMSG_WHO:
-		//We are NOT going to give you your stupid who.
-			return;
+		{ //Only allow one client to spam WHO.
+			if (Client != ClientListCore) break;
+			else goto ForwardVerbatim;
+		}
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor);
