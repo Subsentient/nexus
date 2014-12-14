@@ -65,11 +65,27 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		
 		default: //Nothing we care about.
 		{
+		ForwardVerbatim:
 			//Append \r\n and send to IRC server.
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
 			Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 			
 			break;
+		}
+		case SERVERMSG_PRIVMSG:
+		{
+			char OutBuf[2048];
+			struct ClientList *Worker = ClientListCore;
+			
+			//We need to make all text reach the other client.
+			for (; Worker; Worker = Worker->Next)
+			{
+				if (Worker == Client) continue; //Don't send to the one who just sent this.
+				
+				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Message);
+				Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
+			}
+			goto ForwardVerbatim;
 		}
 		case SERVERMSG_WHO:
 		//We are NOT going to give you your stupid who.
