@@ -175,7 +175,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	//Count clients for our next cool little trick.
 	for (CWorker = ClientListCore; CWorker; CWorker = CWorker->Next) ++ClientCount;
 	
-	snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :Welcome to NEXUS, %s. "
+	snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :Welcome to NEXUS " NEXUS_VERSION ", %s. "
 			"There are currently %d other instances connected to this NEXUS server.\r\n",
 			IRCConfig.Nick, IRCConfig.Nick, ClientCount - 1);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));

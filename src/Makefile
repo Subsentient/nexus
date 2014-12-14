@@ -9,6 +9,9 @@ ifeq ($(OS),WIN)
 endif
 
 all:
+ifeq ($(OS),WIN)
+	$(MAKE) -C ../win32 all
+endif
 	$(CC) $(OBJECTS) -o $(OUTFILE) $(CFLAGS)
 clean:
 	rm -f *.o *.gch
