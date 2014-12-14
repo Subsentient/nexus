@@ -150,8 +150,9 @@ void Server_SendQuit(const int Descriptor)
 void Server_SendIRCWelcome(const int ClientDescriptor)
 {
 	char OutBuf[2048];
-	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor);
+	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor), *CWorker = NULL;
 	struct ChannelList *Worker = ChannelListCore;
+	int ClientCount = 0;
 	
 	if (!Client) return;
 	
@@ -170,7 +171,13 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 		Server_SendChannelRejoin(Worker, Client->Descriptor);
 	}
 	
-	snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS PRIVMSG %s :Welcome to NEXUS %s.\r\n", IRCConfig.Nick, IRCConfig.Nick);
+	
+	//Count clients for our next cool little trick.
+	for (CWorker = ClientListCore; CWorker; CWorker = CWorker->Next) ++ClientCount;
+	
+	snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :Welcome to NEXUS, %s. "
+			"There are currently %d other instances connected to this NEXUS server.\r\n",
+			IRCConfig.Nick, IRCConfig.Nick, ClientCount - 1);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 	
 }

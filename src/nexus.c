@@ -73,9 +73,16 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			break;
 		}
 		case SERVERMSG_PRIVMSG:
-		{
-			char OutBuf[2048];
+		{ //Some clients don't group our own speech correctly for PMs, so do this for channels only.
 			struct ClientList *Worker = ClientListCore;
+			const char *Search = strstr(Message, "PRIVMSG ");
+			
+			if (!Search) return; //WTF?
+			
+			Search += sizeof "PRIVMSG " - 1;
+			
+			//Don't do this for PMs. Just Channels.
+			if (*Search != '#') goto ForwardVerbatim;
 			
 			//We need to make all text reach the other client.
 			for (; Worker; Worker = Worker->Next)
