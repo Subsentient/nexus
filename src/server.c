@@ -12,6 +12,7 @@
 #include "netcore.h"
 #include "config.h"
 #include "nexus.h"
+#include "state.h"
 
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
@@ -19,6 +20,10 @@
 
 //Globals
 struct ClientList *ClientListCore;
+
+//Prototypes
+static void Server_SendChannelNamesList(const struct ChannelList *const Channel, const int ClientDescriptor);
+static void Server_SendChannelRejoin(const struct ChannelList *const Channel, const int ClientDescriptor);
 
 //Functions
 
@@ -148,6 +153,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 {
 	char OutBuf[2048];
 	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor);
+	struct ChannelList *Worker = ChannelListCore;
 	
 	if (!Client) return;
 	
@@ -158,12 +164,74 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	
 	//Tell them to change their nickname to match what we have on file.
 	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s NICK :%s\r\n", Client->OriginalNick, Client->Ident, Client->IP, IRCConfig.Nick);
-	printf("%s", OutBuf);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	
+	//Tell them to join all channels we are already in.
+	for (; Worker; Worker = Worker->Next)
+	{
+		Server_SendChannelRejoin(Worker, Client->Descriptor);
+	}
 	
 	snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS PRIVMSG %s :Welcome to NEXUS %s.\r\n", IRCConfig.Nick, IRCConfig.Nick);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 	
+}
+
+static void Server_SendChannelNamesList(const struct ChannelList *const Channel, const int ClientDescriptor)
+{
+	char OutBuf[2048];
+	struct UserList *Worker = Channel->UserList;
+
+	//Make basic formatting.
+SendBegin:
+	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 353 %s * %s :", IRCConfig.Nick, Channel->Channel);
+	
+	for (; Worker; Worker = Worker->Next)
+	{ //Append until we are close to the string size limit.
+		if (!Worker->Next || strlen(OutBuf) + strlen(Worker->Nick) + (sizeof(" ") - 1) + 1 > sizeof OutBuf - 3) //Minus three for \r\n
+		{ //If no next user.
+			
+			//Delete the trailing space.
+			if (Worker != Channel->UserList) //So it's not zero.
+			{
+				OutBuf[strlen(OutBuf) - 1] = '\0';
+			}
+			strcat(OutBuf, "\r\n"); //Add terminator.
+			
+			Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf)); //Send it.
+			
+			if (Worker->Next)
+			{ //If there are other nicks.
+				Worker = Worker->Next; //Necessary so we don't repeat this nick.
+				goto SendBegin;
+			}
+			else
+			{ //Nope, that's all folks.
+				break;
+			}
+		}
+		
+		//If we got here, need to append a nickname.
+		strcat(OutBuf, Worker->Nick);
+		strcat(OutBuf, " ");
+	}
+	
+	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 366 %s %s :End of /NAMES list.", IRCConfig.Nick, Channel->Channel);
+	Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+	
+}
+
+static void Server_SendChannelRejoin(const struct ChannelList *const Channel, const int ClientDescriptor)
+{ //Sends the list of channels we are in to the client specified.
+	char OutBuf[2048];
+	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor);
+	
+	if (!Client) return;
+	
+	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s JOIN %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Channel->Channel);
+	Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+	
+	Server_SendChannelNamesList(Channel, ClientDescriptor);
 }
 
 struct ClientList *Server_AcceptLoop(void)

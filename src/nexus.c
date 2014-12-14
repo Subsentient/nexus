@@ -113,7 +113,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			if (!strcmp(NickTest, IRCConfig.Nick)) //This is our nick.
 			{ //Since it's our nick, we gotta alter it so that the IP and ident match the client's.
-				
 				for (; Worker; Worker = Worker->Next)
 				{ //Rebuild so it matches their ident and IP.
 					if (IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, Worker))
@@ -122,8 +121,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 						Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
 					}
 				}
-				
-				break;
 				
 				switch (MsgType)
 				{ //Some specific stuff we need to do
