@@ -29,7 +29,6 @@ struct ChannelList *State_AddChannel(const char *const Channel);
 void State_ShutdownChannelList(void);
 bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel);
 struct UserList *State_AddUserToChannel(const char *Nick, const char Symbol, struct ChannelList *Channel);
-void State_DelAllChannelUsers(struct ChannelList *Channel);
 struct ChannelList *State_LookupChannel(const char *const ChannelName);
 struct UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel);
 

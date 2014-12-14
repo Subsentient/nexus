@@ -16,8 +16,6 @@
 
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
-#define NEXUS_FAKEHOST "NEXUS"
-
 //Globals
 struct ClientList *ClientListCore;
 
@@ -180,43 +178,45 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 static void Server_SendChannelNamesList(const struct ChannelList *const Channel, const int ClientDescriptor)
 {
 	char OutBuf[2048];
+	unsigned Ticker = 1;
 	struct UserList *Worker = Channel->UserList;
-
+	FILE *Descriptor = NULL;
+	
 	//Make basic formatting.
 SendBegin:
+	Descriptor = fopen("/geekhut/NEXUS.txt", "a");
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 353 %s * %s :", IRCConfig.Nick, Channel->Channel);
 	
-	for (; Worker; Worker = Worker->Next)
-	{ //Append until we are close to the string size limit.
-		if (!Worker->Next || strlen(OutBuf) + strlen(Worker->Nick) + (sizeof(" ") - 1) + 1 > sizeof OutBuf - 3) //Minus three for \r\n
-		{ //If no next user.
+	for (Ticker = 1; Worker; Worker = Worker->Next, ++Ticker)
+	{
+		unsigned OutBufLen = strlen(OutBuf);
+		char Sym[2] = { '\0' };
+		
+		Sym[0] = Worker->Symbol;
+		
+		snprintf(OutBuf + OutBufLen, sizeof OutBuf - OutBufLen, "%s%s ", Sym, Worker->Nick);
+		
+		if (Worker->Next == NULL|| Ticker == 20) //We pick 20 because sizeof OutBuf (2048) / sizeof Worker->Nick (64) == 32
+		{
+
 			
-			//Delete the trailing space.
-			if (Worker != Channel->UserList) //So it's not zero.
-			{
-				OutBuf[strlen(OutBuf) - 1] = '\0';
-			}
-			strcat(OutBuf, "\r\n"); //Add terminator.
+			OutBuf[strlen(OutBuf) - 1] = '\0';
+			strcat(OutBuf, "\r\n");
+			Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
 			
-			Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf)); //Send it.
+			fprintf(Descriptor, "%s", OutBuf);
+			fflush(Descriptor);
+			fclose(Descriptor);
 			
 			if (Worker->Next)
-			{ //If there are other nicks.
-				Worker = Worker->Next; //Necessary so we don't repeat this nick.
+			{
+				Worker = Worker->Next; //So we don't loop on the same nick.
 				goto SendBegin;
 			}
-			else
-			{ //Nope, that's all folks.
-				break;
-			}
 		}
-		
-		//If we got here, need to append a nickname.
-		strcat(OutBuf, Worker->Nick);
-		strcat(OutBuf, " ");
-	}
+	}			
 	
-	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 366 %s %s :End of /NAMES list.", IRCConfig.Nick, Channel->Channel);
+	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 366 %s %s :End of /NAMES list.\r\n", IRCConfig.Nick, Channel->Channel);
 	Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
 	
 }
@@ -339,6 +339,7 @@ enum ServerMessageType Server_GetMessageType(const char *InStream_)
 	else if (!strcmp(Command, "INVITE")) return SERVERMSG_INVITE;
 	else if (!strcmp(Command, "TOPIC")) return SERVERMSG_TOPIC;
 	else if (!strcmp(Command, "NAMES")) return SERVERMSG_NAMES;
+	else if (!strcmp(Command, "WHO")) return SERVERMSG_WHO;
 	else return SERVERMSG_UNKNOWN;
 }
 

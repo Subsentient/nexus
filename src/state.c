@@ -8,8 +8,14 @@
 #include <stdbool.h>
 
 #include "state.h"
+
+//Globals
 struct ChannelList *ChannelListCore;
 
+//Prototypes
+static void State_DelAllChannelUsers(struct ChannelList *Channel);
+
+//Functions
 struct ChannelList *State_AddChannel(const char *const Channel)
 {
 	struct ChannelList *Worker = ChannelListCore;
@@ -20,7 +26,17 @@ struct ChannelList *State_AddChannel(const char *const Channel)
 	}
 	else
 	{ //Not the first.
-		while (Worker->Next) Worker = Worker->Next; //Skip to the end.
+		
+		for (; Worker; Worker = Worker->Next)
+		{ //Check for duplicates.
+			if (!strcmp(Worker->Channel, Channel))
+			{
+				return Worker;
+			}
+		}
+		
+		//Skip to a free Next.
+		for (Worker = ChannelListCore; Worker->Next; Worker = Worker->Next);
 		
 		Worker->Next = calloc(1, sizeof(struct ChannelList));
 		Worker->Next->Prev = Worker;
@@ -92,7 +108,17 @@ struct UserList *State_AddUserToChannel(const char *Nick, const char Symbol, str
 	}
 	else
 	{
-		while (Worker->Next) Worker = Worker->Next;
+		for (; Worker; Worker = Worker->Next)
+		{ //Check for dupes.
+			if (!strcmp(Worker->Nick, Nick))
+			{
+				Worker->Symbol = Symbol; //Update the symbol, might as well.
+				return Worker;
+			}
+		}
+		
+		//Skip to a NULL Next.
+		for (Worker = Channel->UserList; Worker->Next; Worker = Worker->Next);
 		
 		Worker->Next = calloc(1, sizeof(struct UserList));
 		Worker->Next->Prev = Worker;
@@ -174,7 +200,7 @@ bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel)
 	return false;
 }
 
-void State_DelAllChannelUsers(struct ChannelList *Channel)
+static void State_DelAllChannelUsers(struct ChannelList *Channel)
 {
 	struct UserList *Worker = Channel->UserList, *Next;
 	

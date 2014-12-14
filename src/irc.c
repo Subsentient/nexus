@@ -190,8 +190,6 @@ void IRC_Loop(void)
 		return;
 	}
 	
-	printf("%s\n",IRCBuf);
-	
 	//if we get this far, we got data.
 	if (!strncmp(IRCBuf, "PING", sizeof "PING" - 1))
 	{ //Reply to ping and exit.

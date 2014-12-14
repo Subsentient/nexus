@@ -2,8 +2,10 @@
 
 /**This file is where most of the big stuff is called from. main() is also in here.**/
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "netcore.h"
 #include "nexus.h"
@@ -69,6 +71,9 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			
 			break;
 		}
+		case SERVERMSG_WHO:
+		//We are NOT going to give you your stupid who.
+			return;
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor);
@@ -94,6 +99,64 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
 			Server_ForwardToAll(OutBuf);
 			
+			break;
+		}
+		case IRCMSG_NAMES: //The server is replying to a names command.
+		{
+			unsigned Inc = 0;
+			const char *Search = strchr(Message, '#');
+			char NamesChannel[512];
+			char NamesNick[64]; //Used by the do-while loop.
+			struct ChannelList *ChannelStruct = NULL;
+			
+			//Copy in the channel for this.
+			for (; Search[Inc] != ' ' && Search[Inc] != '\0' && Inc < sizeof NamesChannel - 1; ++Inc)
+			{
+				NamesChannel[Inc] = Search[Inc];
+			}
+			NamesChannel[Inc] = '\0';
+			
+			//Can't find the channel.
+			if (!(ChannelStruct = State_LookupChannel(NamesChannel))) return;
+			
+			if (Search[Inc] == '\0') return; //Bad data. Failed.
+			
+			//Skip past all whitespace and the colon.
+			Search += Inc;
+			while (*Search == ' ' || *Search == ':') ++Search;
+			
+			//Process each nick in the names list.
+			do
+			{
+				char Symbol = 0; //Are they OP or something?
+				
+				while (*Search == ' ') ++Search; //Skip past starting whitespace if reentering loop.
+				
+				//They are an OP or something. Store their symbol.
+				if (*Search == '!' || *Search == '@' || *Search == '#'
+					|| *Search == '$' || *Search == '%' || *Search == '&'
+					|| *Search == '*' || *Search == '+'
+					|| *Search == '=' || *Search == '-' || *Search == '('
+					|| *Search == ')' || *Search == '?' || *Search == '~')
+				{
+					Symbol = *Search++;
+				}
+				
+				//Get the nickname for this name.
+				for (Inc = 0; Search[Inc] != ' ' && Search[Inc] != '\0' && Inc < sizeof NamesNick - 1; ++Inc)
+				{
+					NamesNick[Inc] = Search[Inc];
+				}
+				NamesNick[Inc] = '\0';
+				
+				
+				State_AddUserToChannel(NamesNick, Symbol, ChannelStruct);
+				
+			} while ((Search = strchr(Search, ' ')));
+			
+			//Now send the message to the client.
+			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
+			Server_ForwardToAll(OutBuf);
 			break;
 		}
 		case IRCMSG_PART:
@@ -172,7 +235,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			switch (MsgType)
 			{
-				char Nick[64], Ident[64], Mask[64];
+				char Nick[64], Ident[64], Mask[256];
 				
 				case IRCMSG_NICK:
 				{ //Change the nick for them in all channels they exist in.
@@ -226,6 +289,48 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					break;
 			}
 			break;
+		}
+		case IRCMSG_QUIT:
+		{ //Handles quitting per-user.
+			char Nick[64], Ident[64], Mask[256];
+			IRC_BreakdownNick(Message, Nick, Ident, Mask);
+			struct ChannelList *Worker = ChannelListCore;
+			
+			if (!strcmp(Nick, IRCConfig.Nick))
+			{ //Uhoh, it's us.
+				const char *QuitReason = strchr(Message + 1, ':'); //+ 1 to skip past the FIRST ':'.
+				
+				if (QuitReason)
+				{
+					snprintf(OutBuf, sizeof OutBuf,
+							":" NEXUS_FAKEHOST " PRIVMSG %s :NEXUS was disconnected from the IRC server. "
+							"The reason given was \"%s\". NEXUS is shutting down.\r\n", IRCConfig.Nick, QuitReason + 1);
+				}
+				else
+				{
+					snprintf(OutBuf, sizeof OutBuf,
+							":" NEXUS_FAKEHOST " PRIVMSG %s :NEXUS was disconnected from the IRC server. "
+							"No reason was provided by the server. NEXUS is shutting down.\r\n", IRCConfig.Nick);
+				}
+
+					
+				Server_ForwardToAll(OutBuf);
+				
+				IRC_Disconnect(); //Close the IRC server connection.
+				Server_SendQuit(-1); //Tell all clients to quit.
+				Net_ShutdownServer(); //Bring down the NEXUS server.
+				exit(1);
+			}
+			
+			//Yay! Not us!
+			for (; Worker; Worker = Worker->Next)
+			{
+				State_DelUserFromChannel(Nick, Worker); //If it doesn't find it, that's fine.
+			}
+			
+			//Now forward to all our users.
+			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
+			Server_ForwardToAll(OutBuf);
 		}
 	}
 }

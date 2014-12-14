@@ -6,6 +6,9 @@
 #define __SERVER_HEADER__
 
 #include <stdbool.h>
+
+#define NEXUS_FAKEHOST "NEXUS"
+
 //Structures
 struct ClientList
 { //Contains information about what clients are who.
@@ -34,7 +37,8 @@ enum ServerMessageType
 	SERVERMSG_NICK,
 	SERVERMSG_INVITE,
 	SERVERMSG_TOPIC,
-	SERVERMSG_NAMES
+	SERVERMSG_NAMES,
+	SERVERMSG_WHO
 };
 
 //Prototypes.
