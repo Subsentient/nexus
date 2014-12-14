@@ -385,7 +385,6 @@ LoopStart:
 		
 		
 		//We got data.
-		puts(MessageBuf);
 		NEXUS_NEXUS2IRC(MessageBuf, Worker);
 		goto LoopStart; //We might have had our client deleted, so go to beginning.
 	}
