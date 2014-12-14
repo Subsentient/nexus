@@ -112,9 +112,88 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		
 		default: //Nothing we explicitly have to deal with
 		{ //Append a \r\n and then send it to everyone.
+		ForwardVerbatim:
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
 			Server_ForwardToAll(OutBuf);
 			
+			break;
+		}
+		case IRCMSG_TOPIC: //Either the server sent us a topic or someone has changed it.
+		{
+			unsigned Inc = 0;
+			char NewTopic[1024];
+			char Channel[256], *Worker = strchr(Message, '#');
+			struct ChannelList *ChannelStruct = NULL;
+			
+			if (!Worker) return; //Corrupt data.
+			
+			//Get the channel name.
+			for (; Worker[Inc] != ' ' && Worker[Inc] != '\0' && Inc < sizeof Channel - 1; ++Inc)
+			{
+				Channel[Inc] = Worker[Inc];
+			}
+			Channel[Inc] = '\0';
+			
+			Worker += Inc; //Skip past the space.
+			
+			if (*Worker++ == '\0') return; //Corrupt data.
+			
+			if (*Worker == ':') ++Worker;
+			
+			//Get the new topic.
+			strncpy(NewTopic, Worker, sizeof NewTopic - 1);
+			NewTopic[sizeof NewTopic - 1] = '\0';
+		
+			//Lookup the channel.
+			if ((ChannelStruct = State_LookupChannel(Channel)) == NULL) return; //We aren't in that channel. Why send us a topic?
+		
+			//Copy in the new topic.
+			strncpy(ChannelStruct->Topic, NewTopic, sizeof ChannelStruct->Topic - 1);
+			ChannelStruct->Topic[sizeof ChannelStruct->Topic - 1] = '\0';
+			
+			break;
+		}
+		case IRCMSG_TOPICORIGIN:
+		{ //Where the topic came from.
+			char Channel[256], Setter[256];
+			char *Worker = strchr(Message, '#');
+			unsigned WhenSet = 0; //When the topic was set.
+			unsigned Inc = 0;
+			struct ChannelList *ChannelStruct = NULL;
+			
+			//Get the channel.
+			for (; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Channel - 1; ++Inc, ++Worker)
+			{
+				Channel[Inc] = *Worker;
+			}
+			Channel[Inc] = '\0';
+			
+			if (*Worker++ == '\0') return; //Corrupt data.
+			
+			//Lookup the channel.
+			if (!(ChannelStruct = State_LookupChannel(Channel))) return; //Not in that channel.
+			
+			//Get the setter of the topic.
+			for (Inc = 0; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Setter - 1; ++Inc, ++Worker)
+			{
+				Setter[Inc] = *Worker;
+			}
+			Setter[Inc] = '\0';
+			
+			if (*Worker++ == '\0') return; //Another corruption check.
+			
+			//Get when we set this topic.
+			WhenSet = (unsigned)atoll(Worker);
+			
+			//Copy in the setter.
+			strncpy(ChannelStruct->WhoSetTopic, Setter, sizeof ChannelStruct->WhoSetTopic - 1);
+			ChannelStruct->WhoSetTopic[sizeof ChannelStruct->WhoSetTopic - 1] = '\0';
+			
+			//Copy in the time it was set.
+			ChannelStruct->WhenSetTopic = WhenSet;
+			
+			//Now send it to everyone.
+			goto ForwardVerbatim;
 			break;
 		}
 		case IRCMSG_NAMES: //The server is replying to a names command.

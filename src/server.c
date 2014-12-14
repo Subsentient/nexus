@@ -228,9 +228,21 @@ static void Server_SendChannelRejoin(const struct ChannelList *const Channel, co
 	
 	if (!Client) return;
 	
+	//Send the join command.
 	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s JOIN %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Channel->Channel);
 	Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
 	
+	//Send the topic and the setter of the topic.
+	if (*Channel->Topic && *Channel->WhoSetTopic && Channel->WhenSetTopic != 0)
+	{
+		snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 332 %s %s :%s\r\n", IRCConfig.Nick, Channel->Channel, Channel->Topic);
+		Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+		
+		snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 333 %s %s %s %u\r\n", IRCConfig.Nick, Channel->Channel, Channel->WhoSetTopic, Channel->WhenSetTopic);
+		Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+	}
+	
+	//Send list of users.
 	Server_SendChannelNamesList(Channel, ClientDescriptor);
 }
 

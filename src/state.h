@@ -11,6 +11,9 @@
 struct ChannelList
 { //Holds channels and recursively, a list of users for each channel.
 	char Channel[256]; //Name of the channel.
+	char Topic[1024]; //Current topic of the channel.
+	char WhoSetTopic[256]; //Who set it. In the form of nick!ident@mask usually.
+	unsigned WhenSetTopic; //When the topic was set, in UNIX time.
 	
 	struct UserList
 	{ //List of users and whatnot.
