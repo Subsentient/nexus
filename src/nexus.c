@@ -158,7 +158,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			strncpy(ChannelStruct->Topic, NewTopic, sizeof ChannelStruct->Topic - 1);
 			ChannelStruct->Topic[sizeof ChannelStruct->Topic - 1] = '\0';
 			
-			break;
+			goto ForwardVerbatim;
 		}
 		case IRCMSG_TOPICORIGIN:
 		{ //Where the topic came from.
