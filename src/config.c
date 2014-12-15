@@ -12,11 +12,15 @@
 #define CONFIG_DIR ".nexus"
 #define CONFIG_FILE "NEXUS.conf"
 
+#define IRC_PORT_DEFAULT 6667
+#define NEXUS_PORT_DEFAULT IRC_PORT_DEFAULT
+#define NEXUS_MAXSIMUL_DEFAULT 256
+
 static char ConfigFilePath[1024]; //We need to get the user's home directory.
 
-struct IRCConfig IRCConfig;
+struct IRCConfig IRCConfig = { .PortNum = IRC_PORT_DEFAULT };
 
-struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = 256, .PortNum = 6667 };
+struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = NEXUS_MAXSIMUL_DEFAULT, .PortNum = NEXUS_PORT_DEFAULT };
 
 bool Config_ReadConfig(void)
 {
@@ -84,6 +88,8 @@ bool Config_ReadConfig(void)
 		{
 			CopyFrom = LineData + sizeof "IRC.Server=" - 1;
 			
+			if (*IRCConfig.Server) continue; //Already handed to us via CLI.
+			
 			strncpy(IRCConfig.Server, CopyFrom, sizeof IRCConfig.Server - 1);
 			IRCConfig.Server[sizeof IRCConfig.Server - 1] = '\0';
 		}
@@ -91,11 +97,15 @@ bool Config_ReadConfig(void)
 		{
 			CopyFrom = LineData + sizeof "IRC.Port=" - 1;
 			
+			if (IRCConfig.PortNum != IRC_PORT_DEFAULT) continue; //Already given via config file.
+			
 			IRCConfig.PortNum = atoi(CopyFrom);
 		}
 		else if (!strncmp(LineData, "IRC.Nick=", sizeof "IRC.Nick=" - 1))
 		{
 			CopyFrom = LineData + sizeof "IRC.Nick=" - 1;
+			
+			if (*IRCConfig.Nick) continue;
 			
 			strncpy(IRCConfig.Nick, CopyFrom, sizeof IRCConfig.Nick - 1);
 			IRCConfig.Nick[sizeof IRCConfig.Nick - 1] = '\0';
@@ -104,12 +114,16 @@ bool Config_ReadConfig(void)
 		{
 			CopyFrom = LineData + sizeof "IRC.Ident=" - 1;
 			
+			if (*IRCConfig.Ident) continue;
+			
 			strncpy(IRCConfig.Ident, CopyFrom, sizeof IRCConfig.Ident - 1);
 			IRCConfig.Ident[sizeof IRCConfig.Ident - 1] = '\0';
 		}
 		else if (!strncmp(LineData, "IRC.RealName=", sizeof "IRC.RealName=" - 1))
 		{
 			CopyFrom = LineData + sizeof "IRC.RealName=" - 1;
+			
+			if (*IRCConfig.RealName) continue;
 			
 			strncpy(IRCConfig.RealName, CopyFrom, sizeof IRCConfig.RealName - 1);
 			IRCConfig.RealName[sizeof IRCConfig.RealName - 1] = '\0';
@@ -118,11 +132,15 @@ bool Config_ReadConfig(void)
 		{
 			CopyFrom = LineData + sizeof "NEXUS.Port=" - 1;
 			
+			if (NEXUSConfig.PortNum != NEXUS_PORT_DEFAULT) continue;
+			
 			NEXUSConfig.PortNum = atoi(CopyFrom);
 		}
 		else if (!strncmp(LineData, "NEXUS.MaxSimul=", sizeof "NEXUS.MaxSimul=" - 1))
 		{
 			CopyFrom = LineData + sizeof "NEXUS.MaxSimul=" - 1;
+			
+			if (NEXUSConfig.MaxSimulConnections != NEXUS_MAXSIMUL_DEFAULT) continue;
 			
 			NEXUSConfig.MaxSimulConnections = atoi(CopyFrom);
 		}
@@ -132,7 +150,20 @@ bool Config_ReadConfig(void)
 			continue;
 		}
 	} while (++LineNum, (Worker = strpbrk(Worker, "\r\n")));
-	
+
 	return true;
 }
 
+bool Config_CheckConfig(void)
+{
+	//We need at least a nick and a server name.
+	if (!*IRCConfig.Nick || !*IRCConfig.Server) return false;
+	
+	//No ident? Make our nick our ident.
+	if (!*IRCConfig.Ident) strcpy(IRCConfig.Ident, IRCConfig.Nick);
+	
+	//No realname? Make our nick our realname.
+	if (!*IRCConfig.RealName) strcpy(IRCConfig.RealName, IRCConfig.Nick);
+	
+	return true;
+}

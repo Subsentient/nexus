@@ -14,7 +14,7 @@
 #include "server.h"
 #include "state.h"
 
-int main(void)
+int main(int argc, char **argv)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
 	//Print version and whatnot.
 	
@@ -22,16 +22,100 @@ int main(void)
 	setvbuf(stdout, NULL, _IONBF, 0); //Really, all buffering serves to do for us is mess up our console output. No thanks.
 	setvbuf(stderr, NULL, _IONBF, 0);
 	
-	puts("NEXUS BNC " NEXUS_VERSION " starting up.\n");
+	puts("NEXUS BNC " NEXUS_VERSION "\n");
+	
+	///Process command line arguments.
+	if (argc > 1)
+	{ //Command line arguments override any values in configuration files.
+		unsigned Inc = 1;
+		const char *ArgData = NULL;
+		
+		for (; Inc < argc; ++Inc)
+		{
+			if (!strcmp("--help", argv[Inc]))
+			{
+				printf("Available options:\n\n"
+						"--ircserver=myserver.com\n"
+						"--ircport=6667\n"
+						"--ircnick=mynickname\n"
+						"--ircident=myidentname\n"
+						"--ircrealname=myrealname\n"
+						"--maxsimulclient=1024\n"
+						"--nexusport=6667\n");
+				exit(0);
+			}
+			else if (!strncmp(argv[Inc], "--ircserver=", sizeof "--ircserver" - 1))
+			{ //IRC server hostname.
+				ArgData = argv[Inc] + sizeof "--ircserver=" - 1;
+				if (!*ArgData) continue;
 
-	//Load NEXUS.conf and whatnot
-	printf("Reading configuration... ");
+				strncpy(IRCConfig.Server, ArgData, sizeof IRCConfig.Server - 1);
+				IRCConfig.Server[sizeof IRCConfig.Server - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--ircport=", sizeof "--ircport=" - 1))
+			{ //IRC port number.
+				ArgData = argv[Inc] + sizeof "--ircport=" - 1;
+				if (!*ArgData) continue;
+
+				IRCConfig.PortNum = atoi(ArgData);
+			}
+			else if (!strncmp(argv[Inc], "--ircnick=", sizeof "--ircnick=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--ircnick=" - 1;
+				if (!*ArgData) continue;
+
+				strncpy(IRCConfig.Nick, ArgData, sizeof IRCConfig.Nick - 1);
+				IRCConfig.Nick[sizeof IRCConfig.Nick - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--ircident=", sizeof "--ircident=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--ircident=" - 1;
+				if (!*ArgData) continue;
+
+				strncpy(IRCConfig.Ident, ArgData, sizeof IRCConfig.Ident - 1);
+				IRCConfig.Ident[sizeof IRCConfig.Ident - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--ircrealname=", sizeof "--ircrealname=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--ircrealname=" - 1;
+				if (!*ArgData) continue;
+
+				strncpy(IRCConfig.RealName, ArgData, sizeof IRCConfig.RealName - 1);
+				IRCConfig.RealName[sizeof IRCConfig.RealName - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--maxsimulclients=", sizeof "--maxsimulclients=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--maxsimulclients=" - 1;
+				if (!*ArgData) continue;
+
+				NEXUSConfig.MaxSimulConnections = atoi(ArgData);
+			}
+			else if (!strncmp(argv[Inc], "--nexusport=", sizeof "--nexusport=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--nexusport=" - 1;
+				if (!*ArgData) continue;
+				
+				NEXUSConfig.PortNum = atoi(ArgData);
+			}
+			else
+			{
+				fprintf(stderr, "Bad comand line option \"%s\". See --help for a list of options.\n", argv[Inc]);
+				exit(1);
+			}
+		}
+	}
+	
 	if (!Config_ReadConfig())
-	{
-		fprintf(stderr, "Failed to load configuration!\n");
+	{ //We might still get what we need from CLI arguments.
+		fprintf(stderr, "WARNING: Failed to load config file!\n");
+	}
+	
+	if (!Config_CheckConfig())
+	{ //Bad configuration.
+		fprintf(stderr, "Configuration for NEXUS is invalid.\n"
+				"Please check your configuration and/or command line arguments.\n");
 		return 1;
 	}
-	puts("Done.");
 	
 	//Connect to the REAL IRC server.
 	printf("Connecting to IRC server \"%s:%hu\"... ", IRCConfig.Server, IRCConfig.PortNum);

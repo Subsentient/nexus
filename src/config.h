@@ -25,3 +25,4 @@ extern struct IRCConfig IRCConfig;
 
 //Functions
 bool Config_ReadConfig(void);
+bool Config_CheckConfig(void);
