@@ -16,6 +16,13 @@
 
 int main(void)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
+	//Print version and whatnot.
+	
+	//Turn off buffering. We hates it! -Gollum
+	setvbuf(stdout, NULL, _IONBF, 0); //Really, all buffering serves to do for us is mess up our console output. No thanks.
+	setvbuf(stderr, NULL, _IONBF, 0);
+	
+	puts("NEXUS BNC " NEXUS_VERSION " starting up.\n");
 
 	//Load NEXUS.conf and whatnot
 	printf("Reading configuration... ");
