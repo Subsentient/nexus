@@ -98,7 +98,7 @@ void State_ShutdownChannelList(void)
 	}
 }
 
-struct UserList *State_AddUserToChannel(const char *Nick, const char Symbol, struct ChannelList *Channel)
+struct UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel)
 {
 	struct UserList *Worker = Channel->UserList;
 	
@@ -112,7 +112,7 @@ struct UserList *State_AddUserToChannel(const char *Nick, const char Symbol, str
 		{ //Check for dupes.
 			if (!strcmp(Worker->Nick, Nick))
 			{
-				Worker->Symbol = Symbol; //Update the symbol, might as well.
+				Worker->Modes = Modes; //Might as well update it.
 				return Worker;
 			}
 		}
@@ -129,8 +129,8 @@ struct UserList *State_AddUserToChannel(const char *Nick, const char Symbol, str
 	strncpy(Worker->Nick, Nick, sizeof Worker->Nick - 1);
 	Worker->Nick[sizeof Worker->Nick - 1] = '\0';
 	
-	//Then set the user's symbol.
-	Worker->Symbol = Symbol;
+	//Then set the user's modes.
+	Worker->Modes = Modes;
 	
 	return Worker;
 }
@@ -211,3 +211,55 @@ static void State_DelAllChannelUsers(struct ChannelList *Channel)
 	}
 }
 
+unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol)
+{
+	switch (Symbol)
+	{
+		case '!':
+			return F_IRCMODE_IRCSTAFF;
+		case '~':
+			return F_IRCMODE_FOUNDER;
+		case '&':
+			return F_IRCMODE_PROTECTED;
+		case '@':
+			return F_IRCMODE_OP;
+		case '%':
+			return F_IRCMODE_HALFOP;
+		case '+':
+			return F_IRCMODE_VOICE;
+		default:
+			return 0;
+	}
+}
+
+char State_UserModes_Get_Mode2Symbol(const unsigned char Modes)
+{
+	if (Modes & F_IRCMODE_IRCSTAFF) return '!';
+	else if (Modes & F_IRCMODE_FOUNDER) return '~';
+	else if (Modes & F_IRCMODE_PROTECTED) return '&';
+	else if (Modes & F_IRCMODE_OP) return '@';
+	else if (Modes & F_IRCMODE_HALFOP) return '%';
+	else if (Modes & F_IRCMODE_VOICE) return '+';
+	else return 0;
+}
+
+unsigned char State_UserModes_Get_Letter2Mode(char Letter)
+{
+	switch (Letter)
+	{
+		case 'y':
+			return F_IRCMODE_IRCSTAFF;
+		case 'q':
+			return F_IRCMODE_FOUNDER;
+		case 'a':
+			return F_IRCMODE_PROTECTED;
+		case 'o':
+			return F_IRCMODE_OP;
+		case 'h':
+			return F_IRCMODE_HALFOP;
+		case 'v':
+			return F_IRCMODE_VOICE;
+		default:
+			return 0;
+	}
+}

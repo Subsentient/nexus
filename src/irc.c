@@ -18,6 +18,7 @@ just torn directly out of aqu4bot.
 #include "irc.h"
 #include "nexus.h"
 
+//Functions
 void IRC_NickChange(const char *Nick)
 {
 	char OutBuf[1024];

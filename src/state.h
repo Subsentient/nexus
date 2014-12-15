@@ -6,6 +6,15 @@
 #define __STATE_HEADER__
 
 #include <stdbool.h>
+
+//Flags.
+#define F_IRCMODE_VOICE 0x1
+#define F_IRCMODE_HALFOP 0x2
+#define F_IRCMODE_OP 0x4
+#define F_IRCMODE_PROTECTED 0x8
+#define F_IRCMODE_FOUNDER 0x10
+#define F_IRCMODE_IRCSTAFF 0x20
+
 //Structures
 
 struct ChannelList
@@ -18,7 +27,7 @@ struct ChannelList
 	struct UserList
 	{ //List of users and whatnot.
 		char Nick[64]; //The nick.
-		char Symbol; //Like if they're an operator we put the @ sign in front. Generally just gonna be \0.
+		unsigned char Modes; //Modes on the user, such as +o or +v.
 		struct UserList *Next, *Prev;
 	} *UserList;
 	
@@ -31,9 +40,12 @@ bool State_DelChannel(const char *const Channel);
 struct ChannelList *State_AddChannel(const char *const Channel);
 void State_ShutdownChannelList(void);
 bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel);
-struct UserList *State_AddUserToChannel(const char *Nick, const char Symbol, struct ChannelList *Channel);
+struct UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel);
 struct ChannelList *State_LookupChannel(const char *const ChannelName);
 struct UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel);
+char State_UserModes_Get_Mode2Symbol(const unsigned char Modes);
+unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol);
+unsigned char State_UserModes_Get_Letter2Mode(char Letter);
 
 //Globals
 extern struct ChannelList *ChannelListCore;

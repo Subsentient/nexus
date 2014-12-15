@@ -232,7 +232,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			//Process each nick in the names list.
 			do
 			{
-				char Symbol = 0; //Are they OP or something?
+				unsigned char Modes = 0; //Are they OP or something?
 				
 				while (*Search == ' ') ++Search; //Skip past starting whitespace if reentering loop.
 				
@@ -243,7 +243,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					|| *Search == '=' || *Search == '-' || *Search == '('
 					|| *Search == ')' || *Search == '?' || *Search == '~')
 				{
-					Symbol = *Search++;
+					Modes = State_UserModes_Get_Symbol2Mode(*Search++);
 				}
 				
 				//Get the nickname for this name.
@@ -254,7 +254,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				NamesNick[Inc] = '\0';
 				
 				
-				State_AddUserToChannel(NamesNick, Symbol, ChannelStruct);
+				State_AddUserToChannel(NamesNick, Modes, ChannelStruct);
 				
 			} while ((Search = strchr(Search, ' ')));
 			
@@ -355,14 +355,15 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					for (; Worker; Worker = Worker->Next)
 					{
 						struct UserList *User = State_GetUserInChannel(Nick, Worker);
-						char Symbol = 0;
+						unsigned char Modes = 0;
 						
 						//Doesn't exist in that channel.
 						if (!User) continue;
 						
-						Symbol = User->Symbol; //Back up the symbol, e.g. @ or +.
+						Modes = User->Modes;
+						
 						State_DelUserFromChannel(Nick, Worker); //Delete the old nickname.
-						State_AddUserToChannel(NewNick, Symbol, Worker); //Create the new one.
+						State_AddUserToChannel(NewNick, Modes, Worker); //Create the new one.
 					}
 					break;
 				}
@@ -393,6 +394,82 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					break;
 			}
 			break;
+		}
+		case IRCMSG_MODE:
+		{
+			const char *Worker = strchr(Message, '#');
+			char Channel[256], Nick[64];
+			struct UserList *UserStruct = NULL;
+			struct ChannelList *ChannelStruct = NULL;
+			unsigned Inc = 0;
+			char ModeLetter = 0;
+			bool SettingMode = false;
+			
+			if (!Worker) return; //Not a channel.
+			
+			
+			//Get the channel the mode affects.
+			for (; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Channel - 1; ++Inc, ++Worker)
+			{
+				Channel[Inc] = *Worker;
+			}
+			Channel[Inc] = '\0';
+			
+			if (*Worker == '\0') return; //Corrupted.
+			
+			while (*Worker == ' ') ++Worker;
+			
+			switch (*Worker)
+			{ //Determine if we are stopping or starting this mode.
+				case '+':
+					SettingMode = true;
+					break;
+				case '-':
+					SettingMode = false;
+					break;
+				default:
+					return; //Bad data.
+			}
+			
+			++Worker; //Now on to the letter that tells us what mode.
+			
+			//Look up the mode by its letter.
+			ModeLetter = State_UserModes_Get_Letter2Mode(*Worker);
+			
+			if (!ModeLetter) return; //Not something we can deal with.
+			
+			//Now get the nickname.
+			if (!(Worker = strchr(Worker, ' '))) return; //Bad data again.
+			
+			//Skip past the spaces.
+			while (*Worker == ' ') ++Worker;
+			
+			//Check if this is a mask. If so, return. We are only handling user modes here.
+			if (strchr(Worker, '!')) return;
+			
+			//Now, actually get the nickname.
+			for (Inc = 0; *Worker != '\0' && Inc < sizeof Nick - 1; ++Inc, ++Worker)
+			{
+				Nick[Inc] = *Worker;
+			}
+			Nick[Inc] = '\0';
+			
+			//Look up the channel.
+			if (!(ChannelStruct = State_LookupChannel(Channel))) return; //Can't find the channel.
+			
+			//Look up this user.
+			if (!(UserStruct = State_GetUserInChannel(Nick, ChannelStruct))) return; //Can't find the nick.
+			
+			//Now alter their mode accordingly.
+			if (SettingMode)
+			{
+				UserStruct->Modes |= ModeLetter;
+			}
+			else
+			{
+				UserStruct->Modes &= ~ModeLetter;
+			}
+			goto ForwardVerbatim; //Now send the original message to the clients.
 		}
 		case IRCMSG_QUIT:
 		{ //Handles quitting per-user.

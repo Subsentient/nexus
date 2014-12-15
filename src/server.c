@@ -199,7 +199,8 @@ SendBegin:
 		unsigned OutBufLen = strlen(OutBuf);
 		char Sym[2] = { '\0' };
 		
-		Sym[0] = Worker->Symbol;
+		//Reconstitute the mode flag for this user.
+		*Sym = State_UserModes_Get_Mode2Symbol(Worker->Modes);
 		
 		snprintf(OutBuf + OutBufLen, sizeof OutBuf - OutBufLen, "%s%s ", Sym, Worker->Nick);
 		
