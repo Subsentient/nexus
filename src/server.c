@@ -187,11 +187,9 @@ static void Server_SendChannelNamesList(const struct ChannelList *const Channel,
 	char OutBuf[2048];
 	unsigned Ticker = 1;
 	struct UserList *Worker = Channel->UserList;
-	FILE *Descriptor = NULL;
 	
 	//Make basic formatting.
 SendBegin:
-	Descriptor = fopen("/geekhut/NEXUS.txt", "a");
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 353 %s * %s :", IRCConfig.Nick, Channel->Channel);
 	
 	for (Ticker = 1; Worker; Worker = Worker->Next, ++Ticker)
@@ -211,10 +209,6 @@ SendBegin:
 			OutBuf[strlen(OutBuf) - 1] = '\0';
 			strcat(OutBuf, "\r\n");
 			Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
-			
-			fprintf(Descriptor, "%s", OutBuf);
-			fflush(Descriptor);
-			fclose(Descriptor);
 			
 			if (Worker->Next)
 			{
