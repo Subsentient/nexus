@@ -158,11 +158,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	
 	//First thing we send is our greeting, telling them they're connected OK.
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 001 %s :NEXUS is forwarding you to server %s:%hu\r\n",
-			Client->OriginalNick, IRCConfig.Server, IRCConfig.PortNum);
-	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
-	
-	//Tell them to change their nickname to match what we have on file.
-	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s NICK :%s\r\n", Client->OriginalNick, Client->Ident, Client->IP, IRCConfig.Nick);
+			IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum); //Putting IRCConfig.Nick here is the same as sending a NICK command.
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 	
 	//Tell them to join all channels we are already in.
@@ -175,9 +171,21 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	//Count clients for our next cool little trick.
 	for (CWorker = ClientListCore; CWorker; CWorker = CWorker->Next) ++ClientCount;
 	
-	snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :Welcome to NEXUS " NEXUS_VERSION ", %s. "
-			"There are currently %d other instances connected to this NEXUS server.\r\n",
-			IRCConfig.Nick, IRCConfig.Nick, ClientCount - 1);
+	/**Send a MOTD.**/
+	
+	//Send the beginning.
+	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 375 %s :Welcome to NEXUS " NEXUS_VERSION
+			". You are being forwarded to \"%s:%hu\".\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);
+	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	
+	//Send the middle.
+	snprintf(OutBuf, sizeof OutBuf,
+			":" NEXUS_FAKEHOST " 372 %s :There are currently %d other instances connected to this NEXUS server.\r\n",
+			IRCConfig.Nick, ClientCount - 1);
+	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	
+	//Send the end.
+	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 376 %s :End of MOTD.\r\n", IRCConfig.Nick);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 	
 }
