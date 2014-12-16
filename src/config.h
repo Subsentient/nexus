@@ -23,7 +23,7 @@ struct NEXUSConfig
 //Globals
 extern struct NEXUSConfig NEXUSConfig;
 extern struct IRCConfig IRCConfig;
-
+extern char ConfigFilePath[1024];
 
 //Functions
 bool Config_ReadConfig(void);

@@ -16,7 +16,7 @@
 #define NEXUS_PORT_DEFAULT IRC_PORT_DEFAULT
 #define NEXUS_MAXSIMUL_DEFAULT 256
 
-static char ConfigFilePath[1024]; //We need to get the user's home directory.
+char ConfigFilePath[1024]; //We need to get the user's home directory.
 
 struct IRCConfig IRCConfig = { .PortNum = IRC_PORT_DEFAULT };
 
