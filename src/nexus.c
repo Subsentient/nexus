@@ -43,7 +43,8 @@ int main(int argc, char **argv)
 						"--ircnickservuser=username\n"
 						"--ircnickservpassword=password\n"
 						"--maxsimulclient=1024\n"
-						"--nexusport=6667\n");
+						"--nexusport=6667\n"
+						"--nexuspassword=password\n");
 				exit(0);
 			}
 			else if (!strncmp(argv[Inc], "--ircserver=", sizeof "--ircserver" - 1))
@@ -116,6 +117,14 @@ int main(int argc, char **argv)
 				if (!*ArgData) continue;
 				
 				NEXUSConfig.PortNum = atoi(ArgData);
+			}
+			else if (!strncmp(argv[Inc], "--nexuspassword=", sizeof "--nexuspassword=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--nexuspassword=" - 1;
+				if (!*ArgData) continue;
+				
+				strncpy(NEXUSConfig.ServerPassword, ArgData, sizeof NEXUSConfig.ServerPassword - 1);
+				NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
 			}
 			else
 			{

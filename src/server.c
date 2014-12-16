@@ -263,7 +263,8 @@ struct ClientList *Server_AcceptLoop(void)
 	char InBuf[2048];
 	struct ClientList *Client = NULL;
 	bool UserProvided = false, NickProvided = false;
-		
+	bool PasswordProvided = false;
+	
 	if (!Net_AcceptClient(&TempClient.Descriptor, TempClient.IP, sizeof TempClient.IP))
 	{ //No client.
 		return NULL;
@@ -300,6 +301,13 @@ struct ClientList *Server_AcceptLoop(void)
 			const char *TWorker = InBuf + sizeof "USER";
 			unsigned Inc = 0;
 			
+			//If we want a password, WE WANT A PASSWORD. You're supposed to send PASS first, dunce!
+			if (*NEXUSConfig.ServerPassword && !PasswordProvided)
+			{
+				close(Client->Descriptor);
+				return NULL;
+			}
+			
 			while (*TWorker == ' ' || *TWorker == ':') ++TWorker;
 			
 			for (; TWorker[Inc] != ' ' && TWorker[Inc] != '\0' && Inc < sizeof Client->Ident - 1; ++Inc)
@@ -315,6 +323,13 @@ struct ClientList *Server_AcceptLoop(void)
 		{
 			const char *TWorker = InBuf + sizeof "nick";
 			
+			//If we want a password, WE WANT A PASSWORD.
+			if (*NEXUSConfig.ServerPassword && !PasswordProvided)
+			{
+				close(Client->Descriptor);
+				return NULL;
+			}
+			
 			while (*TWorker == ' ' || *TWorker == ':') ++TWorker;
 				
 			strncpy(Client->OriginalNick, TWorker, sizeof Client->OriginalNick - 1); //Copy in their chosen nick.
@@ -322,6 +337,24 @@ struct ClientList *Server_AcceptLoop(void)
 			
 			NickProvided = true;
 			
+		}
+		else if (!strncmp(InBuf, "PASS", sizeof "PASS" - 1))
+		{
+			const char *TW = InBuf + sizeof "PASS";
+			
+			if (!*NEXUSConfig.ServerPassword)
+			{ //We don't NEED a password. Just ignore this.
+				continue;
+			}
+				
+			while (*TW == ' ') ++TW;
+			
+			if (!strcmp(TW, NEXUSConfig.ServerPassword)) PasswordProvided = true;
+			else
+			{ //Wrong password.
+				close(Client->Descriptor);
+				return NULL;
+			}
 		}
 		continue;
 	}

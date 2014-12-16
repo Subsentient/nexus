@@ -158,6 +158,15 @@ bool Config_ReadConfig(void)
 			
 			NEXUSConfig.MaxSimulConnections = atoi(CopyFrom);
 		}
+		else if (!strncmp(LineData, "NEXUS.NEXUSPassword=", sizeof "NEXUS.NEXUSPassword=" - 1))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.NEXUSPassword=" - 1;
+			
+			if (*NEXUSConfig.ServerPassword) continue; //Password already set at cli.
+			
+			strncpy(NEXUSConfig.ServerPassword, CopyFrom, sizeof NEXUSConfig.ServerPassword - 1);
+			NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
+		}
 		else
 		{
 			fprintf(stderr, "Bad config value \"%s\" on line %u in \"%s\"\n", LineData, LineNum, ConfigFilePath);

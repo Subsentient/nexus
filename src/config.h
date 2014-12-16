@@ -17,6 +17,7 @@ struct NEXUSConfig
 {
 	int MaxSimulConnections;
 	unsigned short PortNum;
+	char ServerPassword[256];
 };
 
 //Globals
