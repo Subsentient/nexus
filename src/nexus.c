@@ -40,6 +40,8 @@ int main(int argc, char **argv)
 						"--ircnick=mynickname\n"
 						"--ircident=myidentname\n"
 						"--ircrealname=myrealname\n"
+						"--ircnickservuser=username\n"
+						"--ircnickservpassword=password\n"
 						"--maxsimulclient=1024\n"
 						"--nexusport=6667\n");
 				exit(0);
@@ -82,6 +84,24 @@ int main(int argc, char **argv)
 
 				strncpy(IRCConfig.RealName, ArgData, sizeof IRCConfig.RealName - 1);
 				IRCConfig.RealName[sizeof IRCConfig.RealName - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--ircnickservuser=", sizeof "--ircnickservuser=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--ircnickservuser=" - 1;
+				
+				if (!*ArgData) continue;
+				
+				strncpy(IRCConfig.NickServUser, ArgData, sizeof IRCConfig.NickServUser - 1);
+				IRCConfig.NickServUser[sizeof IRCConfig.NickServUser - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--ircnickservpassword=", sizeof "--ircnickservpassword=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--ircnickservpassword=" - 1;
+				
+				if (!*ArgData) continue;
+				
+				strncpy(IRCConfig.NickServPassword, ArgData, sizeof IRCConfig.NickServPassword - 1);
+				IRCConfig.NickServPassword[sizeof IRCConfig.NickServPassword - 1] = '\0';
 			}
 			else if (!strncmp(argv[Inc], "--maxsimulclients=", sizeof "--maxsimulclients=" - 1))
 			{

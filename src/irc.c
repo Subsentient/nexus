@@ -97,6 +97,16 @@ bool IRC_Connect(void)
 			}
 		}
 	}
+	
+	//Send NickServ password.
+	if (*IRCConfig.NickServPassword)
+	{
+		char OutBuf[2048];
+		
+		snprintf(OutBuf, sizeof OutBuf, "PRIVMSG NickServ :identify %s %s\r\n", IRCConfig.NickServUser, IRCConfig.NickServPassword);
+		Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+	}
+	
 	return true;
 }
 

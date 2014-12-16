@@ -9,6 +9,7 @@ struct IRCConfig
 {
 	char Nick[64], Ident[128], RealName[256];
 	char Server[1024];
+	char NickServUser[64], NickServPassword[256]; //Nickserv login and whatnot.
 	unsigned short PortNum;
 };
 

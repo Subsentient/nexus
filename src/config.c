@@ -128,6 +128,20 @@ bool Config_ReadConfig(void)
 			strncpy(IRCConfig.RealName, CopyFrom, sizeof IRCConfig.RealName - 1);
 			IRCConfig.RealName[sizeof IRCConfig.RealName - 1] = '\0';
 		}
+		else if (!strncmp(LineData, "IRC.NickServPassword=", sizeof "IRC.NickServPassword=" - 1))
+		{
+			CopyFrom = LineData + sizeof "IRC.NickServPassword=" - 1;
+			
+			strncpy(IRCConfig.NickServPassword, CopyFrom, sizeof IRCConfig.NickServPassword - 1);
+			IRCConfig.NickServPassword[sizeof IRCConfig.NickServPassword - 1] = '\0';
+		}
+		else if (!strncmp(LineData, "IRC.NickServUser=", sizeof "IRC.NickServUser=" - 1))
+		{
+			CopyFrom = LineData + sizeof "IRC.NickServUser=" - 1;
+			
+			strncpy(IRCConfig.NickServUser, CopyFrom, sizeof IRCConfig.NickServUser - 1);
+			IRCConfig.NickServUser[sizeof IRCConfig.NickServUser - 1] = '\0';
+		}
 		else if (!strncmp(LineData, "NEXUS.Port=", sizeof "NEXUS.Port=" - 1))
 		{
 			CopyFrom = LineData + sizeof "NEXUS.Port=" - 1;
@@ -164,6 +178,9 @@ bool Config_CheckConfig(void)
 	
 	//No realname? Make our nick our realname.
 	if (!*IRCConfig.RealName) strcpy(IRCConfig.RealName, IRCConfig.Nick);
+	
+	//all we need is a nickserv password, so if you don't give us a username, we'll use your nick.
+	if (*IRCConfig.NickServPassword && !*IRCConfig.NickServUser) strcpy(IRCConfig.NickServUser, IRCConfig.Nick);
 	
 	return true;
 }
