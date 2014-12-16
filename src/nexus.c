@@ -40,6 +40,7 @@ int main(int argc, char **argv)
 			if (!strcmp("--help", argv[Inc]))
 			{
 				printf("Available options:\n\n"
+						"--configfile=\n"
 						"--ircserver=myserver.com\n"
 						"--ircport=6667\n"
 						"--ircnick=mynickname\n"
@@ -51,6 +52,13 @@ int main(int argc, char **argv)
 						"--nexusport=6667\n"
 						"--nexuspassword=password\n");
 				exit(0);
+			}
+			else if (!strncmp(argv[Inc], "--configfile=", sizeof "--configfile=" - 1))
+			{ //Allow specifying a config file location.
+				ArgData = argv[Inc] + sizeof "--configfile=" - 1;
+				
+				strncpy(ConfigFilePath, ArgData, sizeof ConfigFilePath - 1);
+				ConfigFilePath[sizeof ConfigFilePath - 1] = '\0';
 			}
 			else if (!strncmp(argv[Inc], "--ircserver=", sizeof "--ircserver" - 1))
 			{ //IRC server hostname.

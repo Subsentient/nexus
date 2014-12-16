@@ -31,8 +31,11 @@ bool Config_ReadConfig(void)
 	const char *CopyFrom = NULL; //Just handy for getting values of config
 	unsigned LineNum = 1;
 	
-	//We need to determine the path.
-	snprintf(ConfigFilePath, sizeof ConfigFilePath, "%s/" CONFIG_DIR "/" CONFIG_FILE, getenv("HOME"));
+	if (!*ConfigFilePath)
+	{
+		//We need to determine the path.
+		snprintf(ConfigFilePath, sizeof ConfigFilePath, "%s/" CONFIG_DIR "/" CONFIG_FILE, getenv("HOME"));
+	}
 	
 	if ((FD = fopen(ConfigFilePath, "r")) == NULL || stat(ConfigFilePath, &FileStat) != 0)
 	{
