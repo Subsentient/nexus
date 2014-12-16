@@ -93,6 +93,9 @@ void State_ShutdownChannelList(void)
 	
 	for (; Worker; Worker = Next)
 	{
+		//Get rid of any users they have first.
+		State_DelAllChannelUsers(Worker);
+		
 		Next = Worker->Next;
 		free(Worker);
 	}

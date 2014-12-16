@@ -48,7 +48,7 @@ bool Server_ClientList_Del(const int Descriptor);
 void Server_ClientList_Shutdown(void);
 bool Server_ForwardToAll(const char *const InStream);
 void Server_Loop(void);
-void Server_SendQuit(const int Descriptor);
+void Server_SendQuit(const int Descriptor, const char *const Reason);
 enum ServerMessageType Server_GetMessageType(const char *InStream_);
 
 //Globals

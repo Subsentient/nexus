@@ -9,6 +9,7 @@
 #include "server.h"
 
 #define NEXUS_VERSION "0.1"
+#define CONTROL_NICKNAME "NEXUS_CONTROL"
 
 void NEXUS_Loop(void);
 void NEXUS_IRC2NEXUS(const char *Message);

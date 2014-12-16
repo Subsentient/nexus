@@ -168,6 +168,12 @@ enum IRCMessageType IRC_GetMessageType(const char *InStream_)
 
 bool IRC_Disconnect(void)
 {
+	char OutBuf[2048];
+	
+	//I don't care if this fails.
+	snprintf(OutBuf, sizeof OutBuf, "QUIT :NEXUS BNC " NEXUS_VERSION " shutting down.\r\n");
+	Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+	
 	return !close(IRCDescriptor);
 }
 
@@ -190,7 +196,7 @@ void IRC_Loop(void)
 		snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
 		Server_ForwardToAll(OutBuf);
 		
-		Server_SendQuit(-1); //Now make them quit.
+		Server_SendQuit(-1, "NEXUS has los the connection to the IRC server."); //Now make them quit.
 		Net_ShutdownServer();
 		
 		exit(1);

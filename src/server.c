@@ -132,7 +132,7 @@ bool Server_ForwardToAll(const char *const InStream)
 	return true;
 }
 
-void Server_SendQuit(const int Descriptor)
+void Server_SendQuit(const int Descriptor, const char *const Reason)
 { //Tells all clients or just one client to quit
 	struct ClientList *Worker = ClientListCore;
 	char OutBuf[2048];
@@ -142,7 +142,14 @@ void Server_SendQuit(const int Descriptor)
 		//If not on "everyone" mode we check if the descriptor matches.
 		if (Descriptor != -1 && Descriptor != Worker->Descriptor) continue; 
 		
-		snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP);
+		if (Reason)
+		{
+			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :%s\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP, Reason);
+		}
+		else
+		{
+			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP);
+		}
 		Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
 	}
 }

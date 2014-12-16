@@ -14,6 +14,11 @@
 #include "server.h"
 #include "state.h"
 
+
+//Prototypes
+static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client);
+
+//Functions;
 int main(int argc, char **argv)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
 	//Print version and whatnot.
@@ -196,10 +201,35 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		{ //Some clients don't group our own speech correctly for PMs, so do this for channels only.
 			struct ClientList *Worker = ClientListCore;
 			const char *Search = strstr(Message, "PRIVMSG ");
+			char Target[64], Compare[64] = CONTROL_NICKNAME;
+			const char *PassOn = NULL;
+			unsigned Inc = 0;
 			
 			if (!Search) return; //WTF?
 			
 			Search += sizeof "PRIVMSG " - 1;
+		
+			///Check if this is a communication to NEXUS.
+			for (; Search[Inc] != ' ' && Search[Inc] != '\0' && Inc < sizeof Target - 1; ++Inc)
+			{
+				Target[Inc] = tolower(Search[Inc]);
+			}
+			Target[Inc] = '\0';
+			
+			PassOn = Search + Inc;
+			
+			//Lowercase our control nickname for the compare.
+			for (Inc = 0; (Compare[Inc] = tolower(Compare[Inc])); ++Inc);
+		
+			//Now check if this is a communication to NEXUS.
+			if (!strcmp(Target, Compare)) 
+			{///It's for NEXUS!
+
+				while (*PassOn == ' ' || *PassOn == ':') ++PassOn;
+				
+				NEXUS_HandleClientInterface(PassOn, Client);
+				return; //Since it was for NEXUS, nobody else needs to see it.
+			}
 			
 			//Don't do this for PMs. Just Channels.
 			if (*Search != '#') goto ForwardVerbatim;
@@ -221,7 +251,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_QUIT:
 		{
-			Server_SendQuit(Client->Descriptor);
+			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
 			close(Client->Descriptor);
 			Server_ClientList_Del(Client->Descriptor);
 			return;
@@ -618,7 +648,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				Server_ForwardToAll(OutBuf);
 				
 				IRC_Disconnect(); //Close the IRC server connection.
-				Server_SendQuit(-1); //Tell all clients to quit.
+				Server_SendQuit(-1, "IRC server sent NEXUS a QUIT command."); //Tell all clients to quit.
 				Net_ShutdownServer(); //Bring down the NEXUS server.
 				exit(1);
 			}
@@ -636,4 +666,92 @@ void NEXUS_IRC2NEXUS(const char *Message)
 	}
 }
 
+static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client)
+{ //Processes commands sent to our control nickname.
+	const char *Worker = NULL;
+	char PrimaryCommand[64];
+	unsigned Inc = 0;
+	char OutBuf[2048];
+	
+	for (; Message[Inc] != ' ' && Message[Inc] != '\0' && Inc < sizeof PrimaryCommand - 1; ++Inc)
+	{ //Get the main reason we're here.
+		PrimaryCommand[Inc] = Message[Inc];
+	}
+	PrimaryCommand[Inc] = '\0';
+	
+	//This will be where we find any arguments later.
+	for (Worker = Message + Inc; *Worker == ' '; ++Worker);
+	
+	if (!strcmp(PrimaryCommand, "quit"))
+	{
+		//Confirm the shutdown.
+		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Shutting down NEXUS.\r\n",
+				IRCConfig.Nick);
+		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		
+		
+		//Tell all clients to quit.
+		Server_SendQuit(-1, "A quit command was received from NEXUS' control nickname.");
+		
+		//Disconnect from the IRC server.
+		IRC_Disconnect();
+		
+		//Bring down the NEXUS server.
+		Net_ShutdownServer();
+		
+		//Clean up some stuff.
+		State_ShutdownChannelList();
+		Server_ClientList_Shutdown();
+		
+		exit(0);
+	}
+	else if (!strcmp(PrimaryCommand, "status")) //They want a list of clients and whatnot.
+	{
+		struct ChannelList *ChannelWorker = ChannelListCore;
+		struct ClientList *ClientWorker = ClientListCore;
+		
+		unsigned ChannelCount = 0, ClientCount = 0, Inc = 1;
+		
+		//Count channels.
+		for (; ChannelWorker; ChannelWorker = ChannelWorker->Next, ++ChannelCount);
+		
+		//Count clients.
+		for (; ClientWorker; ClientWorker = ClientWorker->Next, ++ClientCount);
+		
+		//List all channels we are in.
+		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of channels NEXUS is in:\r\n",
+				IRCConfig.Nick);
+		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		
+		for (ChannelWorker = ChannelListCore; ChannelWorker != NULL; ChannelWorker = ChannelWorker->Next, ++Inc)
+		{
+			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u] %s\r\n",
+					IRCConfig.Nick, Inc, ChannelCount, ChannelWorker->Channel);
+			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		}
 
+		//List clients and their info.		
+		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of clients connected to this NEXUS:\r\n",
+				IRCConfig.Nick);
+		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		
+		for (ClientWorker = ClientListCore, Inc = 1; ClientWorker != NULL; ClientWorker = ClientWorker->Next, ++Inc)
+		{
+			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u]%s Ident: \"%s\" IP: \"%s\"\r\n",
+					IRCConfig.Nick, Inc, ClientCount, ClientWorker == Client ? " (YOU)" : "",
+					ClientWorker->Ident, ClientWorker->IP);
+			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		}
+		
+		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :End of status report.\r\n",
+				IRCConfig.Nick);
+		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		return;
+	}	
+	else
+	{
+		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Command unrecognized.\r\n", IRCConfig.Nick);
+		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		return;
+	}
+}
