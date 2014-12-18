@@ -259,7 +259,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_JOIN:
 		{ //Don't allow us to send joins for channels we are already in.
-			const char *Worker = Message + sizeof ("JOIN" - 1);
+			const char *Worker = Message + (sizeof "JOIN" - 1);
 			char Channel[sizeof ((struct ChannelList*)0)->Channel];
 			
 			if (!Worker) return; //Corrupted.
