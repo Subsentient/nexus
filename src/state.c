@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #include "state.h"
 
@@ -141,10 +142,25 @@ struct UserList *State_AddUserToChannel(const char *Nick, const unsigned char Mo
 struct ChannelList *State_LookupChannel(const char *const ChannelName)
 {
 	struct ChannelList *Worker = ChannelListCore;
+	char Compare[2][sizeof ((struct ChannelList*)0)->Channel];
+	unsigned Inc = 0;
+	
+	//Need to make the lookup case insensitive.
+	for (; ChannelName[Inc] != '\0' && Inc < sizeof Compare[0] - 1; ++Inc)
+	{
+		Compare[0][Inc] = tolower(ChannelName[Inc]);
+	}
+	Compare[0][Inc] = '\0';
 	
 	for (; Worker; Worker = Worker->Next)
 	{
-		if (!strcmp(ChannelName, Worker->Channel))
+		for (Inc = 0; Worker->Channel[Inc] != '\0' && Inc < sizeof Compare[1] - 1; ++Inc)
+		{
+			Compare[1][Inc] = tolower(Worker->Channel[Inc]);
+		}
+		Compare[1][Inc] = '\0';
+		
+		if (!strcmp(Compare[0], Compare[1]))
 		{
 			return Worker;
 		}

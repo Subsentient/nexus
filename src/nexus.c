@@ -257,6 +257,26 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			if (Client != ClientListCore) break;
 			else goto ForwardVerbatim;
 		}
+		case SERVERMSG_JOIN:
+		{ //Don't allow us to send joins for channels we are already in.
+			const char *Worker = Message + sizeof ("JOIN" - 1);
+			char Channel[sizeof ((struct ChannelList*)0)->Channel];
+			
+			if (!Worker) return; //Corrupted.
+			
+			while (*Worker == ' ') ++Worker;
+			
+			//Get the channel.
+			strncpy(Channel, Worker, sizeof Channel - 1);
+			Channel[sizeof Channel - 1] = '\0';
+			
+			if (State_LookupChannel(Channel) == NULL) 
+			{ //Only forward it if we are not already in that channel.
+				goto ForwardVerbatim;
+			}
+			
+			return;
+		}
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
