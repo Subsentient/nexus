@@ -263,6 +263,10 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			const char *Worker = Tempstream + (sizeof "JOIN" - 1);
 			char Channel[sizeof ((struct ChannelList*)0)->Channel];
 			unsigned Inc = 0;
+			char *OutChannels = malloc((strlen(Message) + 1) + 1024);
+			bool OneToJoin = false;
+			
+			strcpy(OutChannels, "JOIN ");
 			
 			memcpy(Tempstream, Message, strlen(Message) + 1);
 			
@@ -288,11 +292,20 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 				
 				if (State_LookupChannel(Channel) == NULL)
 				{ //Only forward it if we are not already in that channel.
-					snprintf(OutBuf, sizeof OutBuf, "JOIN %s\r\n", Channel);
-					Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+					OneToJoin = true;
+					strcat(OutChannels, Channel);
+					strcat(OutChannels, ",");
 				}
 			} while ((Worker = strchr(Worker, ',')));
 			
+			if (OneToJoin)
+			{ //We have some that are still good.
+				OutChannels[strlen(OutChannels) - 1] = '\0'; //Kill comma at the end.
+				strcat(OutChannels, "\r\n");
+				Net_Write(IRCDescriptor, OutChannels, strlen(OutChannels));
+			}
+			
+			free(OutChannels); OutChannels = NULL;
 			free(Tempstream); Tempstream = NULL;
 			
 			return;
