@@ -259,21 +259,41 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_JOIN:
 		{ //Don't allow us to send joins for channels we are already in.
-			const char *Worker = Message + (sizeof "JOIN" - 1);
+			char *Tempstream = malloc(strlen(Message) + 1);
+			const char *Worker = Tempstream + (sizeof "JOIN" - 1);
 			char Channel[sizeof ((struct ChannelList*)0)->Channel];
+			unsigned Inc = 0;
+			
+			memcpy(Tempstream, Message, strlen(Message) + 1);
 			
 			if (!Worker) return; //Corrupted.
 			
 			while (*Worker == ' ') ++Worker;
 			
-			//Get the channel.
-			strncpy(Channel, Worker, sizeof Channel - 1);
-			Channel[sizeof Channel - 1] = '\0';
+			//They sometimes send weird afterlists for their channels. If we find a space now, kill it.
+			if (strchr(Worker, ' ')) *strchr(Worker, ' ') = '\0';
 			
-			if (State_LookupChannel(Channel) == NULL) 
-			{ //Only forward it if we are not already in that channel.
-				goto ForwardVerbatim;
-			}
+			
+			///Clients are able to send lists of JOINs with a , separating them. Handle that.
+			do
+			{
+				if (*Worker == ',') ++Worker;
+				
+				for (Inc = 0; Worker[Inc] != ',' && Worker[Inc] != ' ' &&
+					Worker[Inc] != '\0' && Inc < sizeof Channel - 1; ++Inc)
+				{ //Get the channel.
+					Channel[Inc] = Worker[Inc];
+				}
+				Channel[Inc] = '\0';
+				
+				if (State_LookupChannel(Channel) == NULL)
+				{ //Only forward it if we are not already in that channel.
+					snprintf(OutBuf, sizeof OutBuf, "JOIN %s\r\n", Channel);
+					Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+				}
+			} while ((Worker = strchr(Worker, ',')));
+			
+			free(Tempstream); Tempstream = NULL;
 			
 			return;
 		}
