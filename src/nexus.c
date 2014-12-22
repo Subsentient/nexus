@@ -682,6 +682,59 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			}
 			goto ForwardVerbatim; //Now send the original message to the clients.
 		}
+		case IRCMSG_KICK:
+		{
+			char InBuf[2048], *Worker = InBuf;
+			char KChan[128], KNick[128];
+			unsigned Inc = 0;
+			
+			/*Get initial kick data into InBuf*/
+			IRC_GetMessageData(Message, InBuf);
+
+			
+			for (; Inc < sizeof KChan - 1 && *Worker != ' ' && *Worker != '\0'; ++Inc, ++Worker)
+			{ /*Channel.*/
+				KChan[Inc] = tolower(*Worker); /*For all channel comparisons except for display, we want lowercase.*/
+			}
+			KChan[Inc] = '\0';
+			
+			if (*Worker == '\0') return; //No nick, just a channel. Malformed.
+			
+			//Skip to the end of whitespace.
+			while (*Worker == ' ') ++Worker;
+			
+			for (Inc = 0; Inc < sizeof KNick - 1 && Worker[Inc] != ' ' && Worker[Inc] != '\0'; ++Inc)
+			{ /*Get the nick.*/
+				KNick[Inc] = Worker[Inc];
+			}
+			KNick[Inc] = '\0';
+
+			if (!strcmp(KNick, IRCConfig.Nick))
+			{ /*we have been kicked.*/
+				State_DelChannel(KChan);
+			}
+			else
+			{ /*Someone else has been kicked.*/
+				struct ChannelList *ChanStruct = State_LookupChannel(KChan);
+				
+				if (!ChanStruct) return; //Can't find the channel.
+				
+				State_DelUserFromChannel(KNick, ChanStruct);
+			}
+			
+			//Now write the message to each client.
+			for (struct ClientList *SW = ClientListCore; SW; SW = SW->Next)
+			{
+				
+				IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf - 2, SW); //Make sure they think it's for them as they know themselves.
+				
+				strcat(OutBuf, "\r\n");
+				
+				Net_Write(SW->Descriptor, OutBuf, strlen(OutBuf));
+			}
+			
+			break;
+		}
 		case IRCMSG_QUIT:
 		{ //Handles quitting per-user.
 			char Nick[64], Ident[64], Mask[256];
