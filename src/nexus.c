@@ -694,7 +694,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			for (; Inc < sizeof KChan - 1 && *Worker != ' ' && *Worker != '\0'; ++Inc, ++Worker)
 			{ /*Channel.*/
-				KChan[Inc] = tolower(*Worker); /*For all channel comparisons except for display, we want lowercase.*/
+				KChan[Inc] = *Worker; /*For all channel comparisons except for display, we want lowercase.*/
 			}
 			KChan[Inc] = '\0';
 			
