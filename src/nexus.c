@@ -257,7 +257,13 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		case SERVERMSG_WHO:
 		{ //Only allow one client to spam WHO.
 			if (Client != ClientListCore) break;
-			else goto ForwardVerbatim;
+			else
+			{
+				//Turn off throttling here because it can bog things up pretty bad.
+				CurrentClient = NULL;
+				
+				goto ForwardVerbatim;
+			}
 		}
 		case SERVERMSG_JOIN:
 		{ //Don't allow us to send joins for channels we are already in.
@@ -267,6 +273,9 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			unsigned Inc = 0;
 			char *OutChannels = malloc((strlen(Message) + 1) + 1024);
 			bool OneToJoin = false;
+			
+			//Turn off throttling of client out messages here because we do it for them.
+			CurrentClient = NULL;
 			
 			strcpy(OutChannels, "JOIN ");
 			
