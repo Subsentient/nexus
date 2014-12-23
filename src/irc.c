@@ -12,6 +12,10 @@ just torn directly out of aqu4bot.
 #include <errno.h>
 #include <ctype.h>
 
+#ifdef WIN
+#include <winsock2.h>
+#endif
+
 #include "netcore.h"
 #include "config.h"
 #include "server.h"
@@ -56,13 +60,20 @@ bool IRC_Connect(void)
 			//We're currently assuming the IRC server won't send us half a string at a time with our nonblocking method.
 			//I should probably do something about that.
 			NRR = Net_Read(IRCDescriptor, MessageBuf, sizeof MessageBuf, true);
-			
+#ifdef WIN
+			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+#else
 			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
+#endif
 			{
 				fprintf(stderr, "NEXUS connected to the IRC server but could not read data from it.\n");
 				return false;
 			}
+#ifdef WIN
+			else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+#else
 			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
+#endif
 			{ //No data, restart loop after tiny break.
 				usleep(1500);
 				continue;
@@ -185,8 +196,12 @@ void IRC_Loop(void)
 	
 	//Check IRC for data.
 	NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
-	
+
+#ifdef WIN
+	if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+#else
 	if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
+#endif
 	{ //Error.
 		char OutBuf[2048];
 		
@@ -201,7 +216,11 @@ void IRC_Loop(void)
 		
 		exit(1);
 	}
+#ifdef WIN
+	else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+#else
 	else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
+#endif
 	{ //No data from the IRC server.
 		usleep(1500);
 		return;

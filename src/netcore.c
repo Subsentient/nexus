@@ -7,11 +7,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef WIN
+#define _WIN32_WINNT  0x501
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#else
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include "netcore.h"
@@ -34,7 +41,14 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 	
 	do
 	{
-		Status = recv(Descriptor, &Byte, 1, MSG_DONTWAIT);
+#ifdef WIN
+	u_long Value = 1;
+	ioctlsocket(Descriptor, FIONBIO, &Value);
+#else
+	fcntl(Descriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
+#endif
+		Status = recv(Descriptor, (void*)&Byte, 1, 0);
+
 
 		*OutStream++ = Byte;
 
@@ -42,8 +56,11 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 		{
 			break;
 		}
-		
+#ifdef WIN
+		if (Status == -1 && WSAGetLastError() == WSAEWOULDBLOCK)
+#else
 		if (Status == -1 && errno == EWOULDBLOCK)
+#endif
 		{
 			goto ReturnTime;
 		}
@@ -62,8 +79,22 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 	}
 
 ReturnTime:
+
+#ifdef WIN
+	{
+		u_long Value = 0;
+		ioctlsocket(ServerDescriptor, FIONBIO, &Value);
+	}
+#else
+	fcntl(ServerDescriptor, F_SETFL, 0); //Set nonblocking. Necessary for our single-threaded model.
+#endif
+
 	ReturnVal.Status = Status;
+#ifdef WIN
+	ReturnVal.Errno = WSAGetLastError();
+#else
 	ReturnVal.Errno = errno;
+#endif
 	return ReturnVal;
 }
 
@@ -162,7 +193,7 @@ bool Net_InitServer(unsigned short PortNum)
 		return false;
 	}
 
-	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, &True, sizeof(int));
+	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, (char*)&True, sizeof(int));
 
 	if (bind(ServerDescriptor, Res->ai_addr, Res->ai_addrlen) == -1)
 	{
@@ -173,9 +204,12 @@ bool Net_InitServer(unsigned short PortNum)
 	listen(ServerDescriptor, NEXUSConfig.MaxSimulConnections);
 
 	freeaddrinfo(Res);
-
+#ifdef WIN
+	u_long Value = 1;
+	ioctlsocket(ServerDescriptor, FIONBIO, &Value);
+#else
 	fcntl(ServerDescriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
-
+#endif
 	return true;
 }
 
@@ -209,7 +243,11 @@ bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned 
 
 	if ((ClientDescriptor = accept(ServerDescriptor, &ClientInfo, &SockaddrSize)) == -1)
 	{
+#ifdef WIN
+		if (WSAGetLastError() == WSAEWOULDBLOCK)
+#else
 		if (errno == EWOULDBLOCK)
+#endif
 		{ //No client wants us right now. Not an error.
 			usleep(50000); //Sleep 0.05 seconds.
 			return false;
@@ -226,8 +264,12 @@ bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned 
 	//Get client IP.
 	memset(&Addr, 0, AddrSize);
 	getpeername(ClientDescriptor, (void*)&Addr, &AddrSize);
+	
+#ifdef WIN
+	WSAAddressToString(&ClientInfo, sizeof ClientInfo, NULL, OutIPAddr, (DWORD*)&IPAddrMaxLen);
+#else
 	inet_ntop(SocketFamily, (void*)&Addr.sin_addr, OutIPAddr, IPAddrMaxLen); //Copy it into OutIPAddr.
-
+#endif
 	*OutDescriptor = ClientDescriptor; //Give them their descriptor.
 
 	return true;

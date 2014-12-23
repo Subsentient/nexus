@@ -6,7 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-
+#ifdef WIN
+#include <winsock2.h>
+#endif //WIN
 #include "netcore.h"
 #include "nexus.h"
 #include "config.h"
@@ -28,7 +30,7 @@ int main(int argc, char **argv)
 	setvbuf(stderr, NULL, _IONBF, 0);
 	
 	puts("NEXUS BNC " NEXUS_VERSION "\n");
-	
+
 	///Process command line arguments.
 	if (argc > 1)
 	{ //Command line arguments override any values in configuration files.
@@ -158,6 +160,17 @@ int main(int argc, char **argv)
 				"Please check your configuration and/or command line arguments.\n");
 		return 1;
 	}
+
+
+#ifdef WIN //Bring up winsock.
+	WSADATA WSAData;
+
+    if (WSAStartup(MAKEWORD(1,1), &WSAData) != 0)
+    { /*Initialize winsock*/
+        fprintf(stderr, "Unable to initialize WinSock2!");
+        exit(1);
+    }
+#endif //WIN
 	
 	//Connect to the REAL IRC server.
 	printf("Connecting to IRC server \"%s:%hu\"... ", IRCConfig.Server, IRCConfig.PortNum);

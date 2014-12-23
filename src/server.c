@@ -8,6 +8,10 @@
 #include <unistd.h>
 #include <errno.h>
 
+#ifdef WIN
+#include <winsock2.h>
+#endif 
+
 #include "server.h"
 #include "netcore.h"
 #include "config.h"
@@ -300,14 +304,22 @@ struct ClientList *Server_AcceptLoop(void)
 		while (1)
 		{
 			NRR = Net_Read(Client->Descriptor, InBuf, sizeof InBuf, true);
-			
+
+#ifdef WIN
+			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+#else
 			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
+#endif
 			{ //We lost them.
 				close(Client->Descriptor); //Close their connection.
 				Server_ClientList_Del(Client->Descriptor); //Delete their record.
 				return NULL;
 			}
+#ifdef WIN
+			else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+#else
 			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
+#endif
 			{ //They just didn't reply to us yet.
 				continue;
 				usleep(1500);
@@ -433,14 +445,22 @@ LoopStart:
 	for (; Worker; Worker = Worker->Next)
 	{
 		NRR = Net_Read(Worker->Descriptor, MessageBuf, sizeof MessageBuf, true);
-		
+
+#ifdef WIN
+		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+#else
 		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
+#endif
 		{ //Error. DELETE them.
 			close(Worker->Descriptor); //Close the socket.
 			Server_ClientList_Del(Worker->Descriptor);
 			goto LoopStart;
 		}
+#ifdef WIN
+		else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+#else
 		else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
+#endif
 		{ //No data.
 			usleep(1500);
 			continue;
