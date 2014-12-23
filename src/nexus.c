@@ -723,17 +723,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			}
 			
 			//Now write the message to each client.
-			for (struct ClientList *SW = ClientListCore; SW; SW = SW->Next)
-			{
-				
-				IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf - 2, SW); //Make sure they think it's for them as they know themselves.
-				
-				strcat(OutBuf, "\r\n");
-				
-				Net_Write(SW->Descriptor, OutBuf, strlen(OutBuf));
-			}
-			
-			break;
+			goto ForwardVerbatim;
 		}
 		case IRCMSG_QUIT:
 		{ //Handles quitting per-user.
