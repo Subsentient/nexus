@@ -80,6 +80,8 @@ void Server_ClientList_Shutdown(void)
 	}
 	
 	ClientListCore = NULL;
+	PreviousClient = NULL;
+	CurrentClient = NULL;
 }
 
 bool Server_ClientList_Del(const int Descriptor)
@@ -92,6 +94,16 @@ bool Server_ClientList_Del(const int Descriptor)
 	{
 		if (Worker->Descriptor == Descriptor)
 		{ //Match.
+			
+			if (Worker == PreviousClient)
+			{
+				PreviousClient = (struct ClientList*)-1; //We do -1 so it still tests as unequal for any new comparisons.
+			}
+			if (Worker == CurrentClient)
+			{
+				CurrentClient = (struct ClientList*)-1;
+			}
+			
 			if (Worker == ClientListCore)
 			{
 				if (Worker->Next)
