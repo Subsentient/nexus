@@ -321,6 +321,16 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			
 			break;
 		}
+		case SERVERMSG_PING:
+		{ //They're doing a lag check. Give them OUR response.
+			char *Start = strchr(Message, ':');
+			
+			if (!Start) break;
+			
+			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " PONG " NEXUS_FAKEHOST " %s\r\n", Start);
+			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			break;
+		}		
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
