@@ -20,7 +20,8 @@ char ConfigFilePath[1024]; //We need to get the user's home directory.
 
 struct IRCConfig IRCConfig = { .PortNum = IRC_PORT_DEFAULT };
 
-struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = NEXUS_MAXSIMUL_DEFAULT, .PortNum = NEXUS_PORT_DEFAULT };
+struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = NEXUS_MAXSIMUL_DEFAULT, .PortNum = NEXUS_PORT_DEFAULT,
+								.InterclientDelay = INTERCLIENTDELAY_DEFAULT};
 
 bool Config_ReadConfig(void)
 {
@@ -169,6 +170,14 @@ bool Config_ReadConfig(void)
 			
 			strncpy(NEXUSConfig.ServerPassword, CopyFrom, sizeof NEXUSConfig.ServerPassword - 1);
 			NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
+		}
+		else if (!strncmp(LineData, "NEXUS.InterclientDelay=", sizeof "NEXUS.InterclientDelay" - 1))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.InterclientDelay" - 1;
+			
+			if (NEXUSConfig.InterclientDelay != INTERCLIENTDELAY_DEFAULT) continue; //We already have it from CLI.
+			
+			NEXUSConfig.InterclientDelay = atoi(CopyFrom);
 		}
 		else
 		{

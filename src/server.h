@@ -53,5 +53,6 @@ enum ServerMessageType Server_GetMessageType(const char *InStream_);
 
 //Globals
 extern struct ClientList *ClientListCore;
+extern struct ClientList *CurrentClient, *PreviousClient;
 
 #endif //__SERVER_HEADER__

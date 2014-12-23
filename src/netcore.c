@@ -71,6 +71,14 @@ bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 {
 	unsigned Transferred = 0, TotalTransferred = 0;
 
+	//If sending to IRC don't allow clients to get disconnected by too many sending at the same time.
+	if (Descriptor == IRCDescriptor
+		&& CurrentClient && PreviousClient
+		&& CurrentClient != PreviousClient)
+	{
+		usleep(NEXUSConfig.InterclientDelay * 100000); //Sleep in 10ths of seconds.
+	}
+
 	do
 	{
 		Transferred = send(Descriptor, InMsg, (WriteSize - TotalTransferred), 0);

@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 
+#define INTERCLIENTDELAY_DEFAULT 8
 //Structures
 struct IRCConfig
 {
@@ -18,6 +19,7 @@ struct NEXUSConfig
 	int MaxSimulConnections;
 	unsigned short PortNum;
 	char ServerPassword[256];
+	unsigned InterclientDelay; //In 10ths of seconds.
 };
 
 //Globals

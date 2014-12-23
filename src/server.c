@@ -18,6 +18,7 @@
 
 //Globals
 struct ClientList *ClientListCore;
+struct ClientList *CurrentClient, *PreviousClient;
 
 //Prototypes
 static void Server_SendChannelNamesList(const struct ChannelList *const Channel, const int ClientDescriptor);

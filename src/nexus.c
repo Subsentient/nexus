@@ -192,6 +192,8 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 {
 	const enum ServerMessageType MsgType = Server_GetMessageType(Message);
 	
+	CurrentClient = Client;
+	
 	switch (MsgType)
 	{
 		char OutBuf[2048];
@@ -213,7 +215,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			const char *PassOn = NULL;
 			unsigned Inc = 0;
 			
-			if (!Search) return; //WTF?
+			if (!Search) break; //WTF?
 			
 			Search += sizeof "PRIVMSG " - 1;
 		
@@ -236,7 +238,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 				while (*PassOn == ' ' || *PassOn == ':') ++PassOn;
 				
 				NEXUS_HandleClientInterface(PassOn, Client);
-				return; //Since it was for NEXUS, nobody else needs to see it.
+				break; //Since it was for NEXUS, nobody else needs to see it.
 			}
 			
 			//Don't do this for PMs. Just Channels.
@@ -270,7 +272,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			
 			memcpy(Tempstream, Message, strlen(Message) + 1);
 			
-			if (!Worker) return; //Corrupted.
+			if (!Worker) break; //Corrupted.
 			
 			while (*Worker == ' ') ++Worker;
 			
@@ -308,16 +310,20 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			free(OutChannels); OutChannels = NULL;
 			free(Tempstream); Tempstream = NULL;
 			
-			return;
+			break;
 		}
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
 			close(Client->Descriptor);
 			Server_ClientList_Del(Client->Descriptor);
-			return;
+			break;
 		}
 	}
+	
+	//This is necessary!
+	PreviousClient = Client;
+	CurrentClient = NULL; //Don't remove this either.
 }
 
 /*Processes data from the real IRC server and then sends it to functions that reformat
