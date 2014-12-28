@@ -306,7 +306,7 @@ struct ClientList *Server_AcceptLoop(void)
 			NRR = Net_Read(Client->Descriptor, InBuf, sizeof InBuf, true);
 
 #ifdef WIN
-			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+			if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
 #else
 			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
 #endif
@@ -316,7 +316,7 @@ struct ClientList *Server_AcceptLoop(void)
 				return NULL;
 			}
 #ifdef WIN
-			else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+			else if (NRR.Errno == WSAEWOULDBLOCK)
 #else
 			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif
@@ -447,7 +447,7 @@ LoopStart:
 		NRR = Net_Read(Worker->Descriptor, MessageBuf, sizeof MessageBuf, true);
 
 #ifdef WIN
-		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+		if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
 #else
 		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
 #endif
@@ -457,7 +457,7 @@ LoopStart:
 			goto LoopStart;
 		}
 #ifdef WIN
-		else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+		else if (NRR.Errno != 0 && NRR.Errno == WSAEWOULDBLOCK)
 #else
 		else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif

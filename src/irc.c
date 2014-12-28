@@ -61,7 +61,7 @@ bool IRC_Connect(void)
 			//I should probably do something about that.
 			NRR = Net_Read(IRCDescriptor, MessageBuf, sizeof MessageBuf, true);
 #ifdef WIN
-			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+			if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
 #else
 			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
 #endif
@@ -70,7 +70,7 @@ bool IRC_Connect(void)
 				return false;
 			}
 #ifdef WIN
-			else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+			else if (NRR.Errno == WSAEWOULDBLOCK)
 #else
 			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif
@@ -198,7 +198,7 @@ void IRC_Loop(void)
 	NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
 
 #ifdef WIN
-	if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != WSAEWOULDBLOCK))
+	if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
 #else
 	if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
 #endif
@@ -217,7 +217,7 @@ void IRC_Loop(void)
 		exit(1);
 	}
 #ifdef WIN
-	else if (NRR.Status == -1 && NRR.Errno == WSAEWOULDBLOCK)
+	else if (NRR.Errno == WSAEWOULDBLOCK)
 #else
 	else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif

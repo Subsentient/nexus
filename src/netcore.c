@@ -37,16 +37,16 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 	unsigned char Byte = 0;
 	unsigned char *OutStream = OutStream_;
 	unsigned Inc = 0;
-	struct NetReadReturn ReturnVal;
-	
-	do
-	{
+	struct NetReadReturn ReturnVal;	
 #ifdef WIN
 	u_long Value = 1;
 	ioctlsocket(Descriptor, FIONBIO, &Value);
 #else
 	fcntl(Descriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
 #endif
+
+	do
+	{
 		Status = recv(Descriptor, (void*)&Byte, 1, 0);
 
 
@@ -57,7 +57,7 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 			break;
 		}
 #ifdef WIN
-		if (Status == -1 && WSAGetLastError() == WSAEWOULDBLOCK)
+		if (WSAGetLastError() == WSAEWOULDBLOCK)
 #else
 		if (Status == -1 && errno == EWOULDBLOCK)
 #endif
@@ -83,10 +83,10 @@ ReturnTime:
 #ifdef WIN
 	{
 		u_long Value = 0;
-		ioctlsocket(ServerDescriptor, FIONBIO, &Value);
+		ioctlsocket(Descriptor, FIONBIO, &Value);
 	}
 #else
-	fcntl(ServerDescriptor, F_SETFL, 0); //Set nonblocking. Necessary for our single-threaded model.
+	fcntl(Descriptor, F_SETFL, 0);
 #endif
 
 	ReturnVal.Status = Status;
