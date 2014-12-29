@@ -75,7 +75,11 @@ bool IRC_Connect(void)
 			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif
 			{ //No data, restart loop after tiny break.
-				usleep(1500);
+#ifdef WIN
+				Sleep(1);
+#else
+				usleep(1000);
+#endif //WIN
 				continue;
 			}
 			else break; //We got what we came for.
@@ -221,8 +225,13 @@ void IRC_Loop(void)
 #else
 	else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif
-	{ //No data from the IRC server.
-		usleep(1500);
+	{ //No data from the IRC server
+#ifdef WIN
+		Sleep(1);
+#else
+		usleep(1000);
+#endif //WIN
+		
 		return;
 	}
 	

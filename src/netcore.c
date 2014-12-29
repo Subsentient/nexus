@@ -107,7 +107,11 @@ bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 		&& CurrentClient && PreviousClient
 		&& CurrentClient != PreviousClient)
 	{
+#ifdef WIN
+		Sleep(NEXUSConfig.InterclientDelay * 100);
+#else
 		usleep(NEXUSConfig.InterclientDelay * 100000); //Sleep in 10ths of seconds.
+#endif //WIN
 	}
 
 	do
@@ -249,7 +253,11 @@ bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned 
 		if (errno == EWOULDBLOCK)
 #endif
 		{ //No client wants us right now. Not an error.
+#ifdef WIN
+			Sleep(50);
+#else
 			usleep(50000); //Sleep 0.05 seconds.
+#endif //WIN
 			return false;
 		}
 		else
