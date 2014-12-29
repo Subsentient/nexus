@@ -245,30 +245,35 @@ bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned 
 	memset(&ClientInfo, 0, sizeof ClientInfo); //I don't know the spec for this structure, so suck my memset.
 	
 
-	if ((ClientDescriptor = accept(ServerDescriptor, &ClientInfo, &SockaddrSize)) == -1)
+	ClientDescriptor = accept(ServerDescriptor, &ClientInfo, &SockaddrSize);
+	
+#ifdef WIN
+	if (WSAGetLastError() != 0)
+#else
+	if (ClientDescriptor == -1)
+#endif
 	{
+
 #ifdef WIN
 		if (WSAGetLastError() == WSAEWOULDBLOCK)
 #else
 		if (errno == EWOULDBLOCK)
-#endif
-		{ //No client wants us right now. Not an error.
-#ifdef WIN
-			Sleep(50);
-#else
-			usleep(50000); //Sleep 0.05 seconds.
 #endif //WIN
-			return false;
+		{ //Not an error. Sleep for a moment and then proceed.
+#ifdef WIN //Windows.
+			Sleep(5);
+#else //Unix.
+			usleep(5000);
+#endif //WIN
 		}
 		else
-		{ //Something more serious than no client.
+		{
 			fprintf(stderr, "Failed to accept()!\n");
 			Net_ShutdownServer();
 			exit(1);
 		}
 	}
-	
-	
+			
 	//Get client IP.
 	memset(&Addr, 0, AddrSize);
 	getpeername(ClientDescriptor, (void*)&Addr, &AddrSize);

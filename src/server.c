@@ -322,7 +322,11 @@ struct ClientList *Server_AcceptLoop(void)
 #endif
 			{ //They just didn't reply to us yet.
 				continue;
-				usleep(1500);
+#ifdef WIN
+				Sleep(1);
+#else
+				usleep(1000);
+#endif
 			}
 			else break;
 		}
