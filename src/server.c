@@ -457,12 +457,16 @@ LoopStart:
 			goto LoopStart;
 		}
 #ifdef WIN
-		else if (NRR.Errno != 0 && NRR.Errno == WSAEWOULDBLOCK)
+		else if (NRR.Errno == WSAEWOULDBLOCK)
 #else
 		else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
 #endif
 		{ //No data.
-			usleep(1500);
+#ifdef WIN
+			Sleep(1);
+#else
+			usleep(1000);
+#endif
 			continue;
 		}
 		
