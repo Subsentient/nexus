@@ -694,7 +694,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			while (*Worker == ' ') ++Worker;
 			
 			//Check if this is a mask. If so, return. We are only handling user modes here.
-			if (strchr(Worker, '!')) return;
+			if (strchr(Worker, '!')) goto ForwardVerbatim;
 			
 			//Now, actually get the nickname.
 			for (Inc = 0; *Worker != '\0' && Inc < sizeof Nick - 1; ++Inc, ++Worker)
