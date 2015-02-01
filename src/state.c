@@ -1,6 +1,6 @@
 /*NEXUS IRC session BNC, by Subsentient. This software is public domain.*/
 
-/**Keeps track of channels, scrollback, and other state information.**/
+/**Keeps track of channels and other state information.**/
 
 #include <stdio.h>
 #include <stdlib.h>
