@@ -212,7 +212,7 @@ void IRC_Loop(void)
 		IRC_Disconnect();
 		
 		//Tell everyone what happened.
-		snprintf(OutBuf, sizeof OutBuf, ":NEXUS!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
+		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
 		Server_ForwardToAll(OutBuf);
 		
 		Server_SendQuit(-1, "NEXUS has los the connection to the IRC server."); //Now make them quit.
