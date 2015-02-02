@@ -222,12 +222,11 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 		struct tm *TimeStruct = localtime(&SWorker->Time);
 		char TimeBuf[128];
 		
-		strftime(TimeBuf, sizeof TimeBuf, "%I:%M:%S %Y-%m-%d", TimeStruct);
+		strftime(TimeBuf, sizeof TimeBuf, "%H:%M %Y-%m-%d", TimeStruct);
 
-		snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\2\0033[%s]\3\2 %s\r\n",
+		snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 %s\r\n",
 				SWorker->Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, SWorker->Msg);
 		
-		puts(ScrollBuf);
 		//Now send it to the client.
 		Net_Write(Client->Descriptor, ScrollBuf, strlen(ScrollBuf));
 	}
