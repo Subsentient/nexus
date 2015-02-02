@@ -20,4 +20,9 @@ struct ScrollbackList
 ///Globals.
 extern struct ScrollbackList *ScrollbackCore;
 
+///Functions
+struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, const char *Target, time_t Time);
+void Scrollback_DelMsg(struct ScrollbackList *ToDel);
+void Scrollback_Shutdown(void);
+
 #endif //__SCROLLBACK_HEADER__

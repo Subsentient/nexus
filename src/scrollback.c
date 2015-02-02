@@ -35,8 +35,11 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 	Worker->Origin = malloc(strlen(Origin) + 1);
 	strcpy((char*)Worker->Origin, Origin);
 	
-	Worker->Target = malloc(strlen(Target) + 1);
-	strcpy((char*)Worker->Target, Target);
+	if (Target)
+	{ //if it's null we send to ourselves.
+		Worker->Target = malloc(strlen(Target) + 1);
+		strcpy((char*)Worker->Target, Target);
+	}
 	
 	Worker->Time = Time;
 	
@@ -45,6 +48,13 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 
 void Scrollback_DelMsg(struct ScrollbackList *ToDel)
 {
+	
+	//First we must delete the objects for this thing.
+	free((void*)ToDel->Msg);
+	free((void*)ToDel->Origin);
+	if (ToDel->Target) free((void*)ToDel->Target);
+	
+	//Then we can remove it from the list.
 	if (ToDel == ScrollbackCore)
 	{
 		if (ToDel->Next)
@@ -67,6 +77,19 @@ void Scrollback_DelMsg(struct ScrollbackList *ToDel)
 	}
 }
 
-
-
-
+void Scrollback_Shutdown(void)
+{
+	struct ScrollbackList *Worker = ScrollbackCore, *Next;
+	
+	for (; Worker; Worker = Next)
+	{
+		//Free subobjects.
+		free((void*)Worker->Msg);
+		free((void*)Worker->Origin);
+		if (Worker->Target) free((void*)Worker->Target);
+		
+		//Then we can nuke the rest.
+		Next = Worker->Next;
+		free(Worker);
+	}
+}

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <time.h>
 #ifdef WIN
 #include <winsock2.h>
 #endif //WIN
@@ -15,7 +16,7 @@
 #include "irc.h"
 #include "server.h"
 #include "state.h"
-
+#include "scrollback.h"
 
 //Prototypes
 static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client);
@@ -375,6 +376,47 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			Server_ForwardToAll(OutBuf);
 			
 			break;
+		}
+		case IRCMSG_PRIVMSG:
+		{ //We just want to put it in the scrollback, then we send it along.
+			unsigned Inc = 0;
+			char Origin[256], Target[256] = { '\0' };
+			const char *Worker = Message;
+			
+			++Worker; //Skip past the ':' at start.
+			
+			for (; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Origin - 1; ++Inc, ++Worker)
+			{ //Get the user who sent it.
+				Origin[Inc] = *Worker;
+			}
+			Origin[Inc] = '\0';
+			
+			while (*Worker == ' ') ++Worker;
+			
+			//Go to the target of the message.
+			if (!(Worker = strstr(Worker, "PRIVMSG "))) return; //Damaged data.
+			Worker += strlen("PRIVMSG ");
+			
+			if (!*Worker) puts("one."); //Damaged.
+			
+			
+			//Copy in the target.
+			for (Inc = 0; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Target - 1; ++Inc, ++Worker)
+			{
+				Target[Inc] = *Worker;
+			}
+			Target[Inc] = '\0';
+			
+			//Go to the data.
+			while (*Worker == ' ') ++Worker;
+			if (*Worker == ':') ++Worker;
+			
+			if (!*Worker) puts("two");
+			
+			//We have data, add it to the scrollback.
+			Scrollback_AddMsg(Worker, Origin, *Target == '#' ? Target : NULL, time(NULL));
+			
+			goto ForwardVerbatim;
 		}
 		case IRCMSG_TOPIC: //Either the server sent us a topic or someone has changed it.
 		{
@@ -842,6 +884,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		Net_ShutdownServer();
 		
 		//Clean up some stuff.
+		Scrollback_Shutdown();
 		State_ShutdownChannelList();
 		Server_ClientList_Shutdown();
 		

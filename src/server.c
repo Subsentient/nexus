@@ -17,6 +17,7 @@
 #include "config.h"
 #include "nexus.h"
 #include "state.h"
+#include "scrollback.h"
 
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
@@ -211,6 +212,25 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	//Send the end.
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 376 %s :End of MOTD.\r\n", IRCConfig.Nick);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	
+	//Send all scrollback.
+	struct ScrollbackList *SWorker = ScrollbackCore;
+	char ScrollBuf[2048];
+	
+	for (; SWorker; SWorker = SWorker->Next)
+	{
+		struct tm *TimeStruct = localtime(&SWorker->Time);
+		char TimeBuf[128];
+		
+		strftime(TimeBuf, sizeof TimeBuf, "%I:%M:%S %Y-%m-%d", TimeStruct);
+
+		snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\2\0033[%s]\3\2 %s\r\n",
+				SWorker->Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, SWorker->Msg);
+		
+		puts(ScrollBuf);
+		//Now send it to the client.
+		Net_Write(Client->Descriptor, ScrollBuf, strlen(ScrollBuf));
+	}
 	
 }
 

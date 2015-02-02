@@ -1,6 +1,6 @@
 CFLAGS = -std=gnu99 -pedantic -Wall -g -O0
 OUTFILE = ../NEXUS
-OBJECTS = config.c netcore.c irc.c state.c server.c nexus.c
+OBJECTS = config.c netcore.c irc.c state.c server.c nexus.c scrollback.c
 
 ifeq ($(OS),WIN)
 	CFLAGS += -lws2_32 -DWIN
