@@ -266,6 +266,10 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Message);
 				Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
 			}
+			
+			//Now we want to add it to our scrollback.
+			Scrollback_AddMsg(strchr(Search, ':') + 1, NULL, Target, time(NULL));
+			
 			goto ForwardVerbatim;
 		}
 		case SERVERMSG_WHO:

@@ -215,17 +215,25 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	
 	//Send all scrollback.
 	struct ScrollbackList *SWorker = ScrollbackCore;
-	char ScrollBuf[2048];
+	char ScrollBuf[2048], SelfOrigin[256];
+	
+	snprintf(SelfOrigin, sizeof SelfOrigin, "%s!%s@%s", IRCConfig.Nick, Client->Ident, Client->IP);
 	
 	for (; SWorker; SWorker = SWorker->Next)
-	{
+	{ //Loop through sending the scrollback.
 		struct tm *TimeStruct = localtime(&SWorker->Time);
 		char TimeBuf[128];
+		const char *Origin = SWorker->Origin;
 		
 		strftime(TimeBuf, sizeof TimeBuf, "%H:%M %Y-%m-%d", TimeStruct);
 
+		if (!Origin)
+		{ //We want to use ourselves as the origin if none specified.
+			Origin = SelfOrigin;
+		}
+			
 		snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 %s\r\n",
-				SWorker->Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, SWorker->Msg);
+				Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, SWorker->Msg);
 		
 		//Now send it to the client.
 		Net_Write(Client->Descriptor, ScrollBuf, strlen(ScrollBuf));
