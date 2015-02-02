@@ -30,7 +30,7 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 	
 		
 	Worker->Msg = malloc(strlen(Msg) + 1);
-	strcpy((char*)Worker->Msg, Msg);
+	strcpy((char*)Worker->Msg, Msg); //These pointers are constant but it's safe to cast them to mutable.
 	
 	Worker->Origin = malloc(strlen(Origin) + 1);
 	strcpy((char*)Worker->Origin, Origin);
@@ -42,3 +42,31 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 	
 	return Worker;
 }
+
+void Scrollback_DelMsg(struct ScrollbackList *ToDel)
+{
+	if (ToDel == ScrollbackCore)
+	{
+		if (ToDel->Next)
+		{
+			ScrollbackCore = ToDel->Next;
+			ScrollbackCore->Prev = NULL;
+			free(ToDel);
+		}
+		else
+		{
+			ScrollbackCore = NULL;
+			free(ToDel);
+		}
+	}
+	else
+	{
+		if (ToDel->Next) ToDel->Next->Prev = ToDel->Prev;
+		ToDel->Prev->Next = ToDel->Next;
+		free(ToDel);
+	}
+}
+
+
+
+
