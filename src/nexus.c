@@ -158,14 +158,18 @@ int main(int argc, char **argv)
 				switch (*ArgData++)
 				{
 					case 's': //Seconds.
+					case 'S':
 						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData);
 						break;
 					case 'm':
+					case 'M':
 						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData) * 60;
 						break;
+					case 'H':
 					case 'h':
 						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData) * 60 * 60;
 						break;
+					case 'D':
 					case 'd':
 						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData) * ((60 * 60) * 24);
 						break;

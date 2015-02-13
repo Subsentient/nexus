@@ -194,15 +194,19 @@ bool Config_ReadConfig(void)
 			
 			switch (*CopyFrom++)
 			{
+				case 'S':
 				case 's': //Seconds.
 					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom);
 					break;
+				case 'M':
 				case 'm':
 					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom) * 60;
 					break;
+				case 'H':
 				case 'h':
 					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom) * 60 * 60;
 					break;
+				case 'D':
 				case 'd':
 					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom) * ((60 * 60) * 24);
 					break;
