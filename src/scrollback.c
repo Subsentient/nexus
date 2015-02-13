@@ -3,6 +3,7 @@
 /**Controls the recording, formatting, and reporting of all scrollback.**/
 
 #include "scrollback.h"
+#include "config.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -96,3 +97,21 @@ void Scrollback_Shutdown(void)
 		free(Worker);
 	}
 }
+
+void Scrollback_Reap(void)
+{
+
+		//Reap expired scrollback.
+		const time_t TimeCompare = time(NULL);
+		
+	SBLoop:
+		for (struct ScrollbackList *SBWorker = ScrollbackCore; SBWorker; SBWorker = SBWorker->Next)
+		{
+			if (SBWorker->Time + NEXUSConfig.ScrollbackKeepTime < TimeCompare)
+			{ //Expired. Reap it.
+				Scrollback_DelMsg(SBWorker);
+				goto SBLoop;
+			}
+		}
+}
+

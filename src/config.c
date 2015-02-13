@@ -21,7 +21,9 @@ char ConfigFilePath[1024]; //We need to get the user's home directory.
 struct IRCConfig IRCConfig = { .PortNum = IRC_PORT_DEFAULT };
 
 struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = NEXUS_MAXSIMUL_DEFAULT, .PortNum = NEXUS_PORT_DEFAULT,
-								.InterclientDelay = INTERCLIENTDELAY_DEFAULT};
+								.InterclientDelay = INTERCLIENTDELAY_DEFAULT, .ScrollbackEnabled = true,
+								.ScrollbackKeepTime = (60 * 60) * 8 //Eight hour default
+								};
 
 bool Config_ReadConfig(void)
 {
@@ -178,6 +180,36 @@ bool Config_ReadConfig(void)
 			if (NEXUSConfig.InterclientDelay != INTERCLIENTDELAY_DEFAULT) continue; //We already have it from CLI.
 			
 			NEXUSConfig.InterclientDelay = atoi(CopyFrom);
+		}
+		else if (!strncmp(LineData, "NEXUS.ScrollbackEnabled=", sizeof "NEXUS.ScrollbackEnabled=" - 1))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.ScrollbackEnabled=" - 1;
+			
+			if (!strcmp(CopyFrom, "true")) NEXUSConfig.ScrollbackEnabled = true;
+			else NEXUSConfig.ScrollbackEnabled = false;
+		}
+		else if (!strncmp(LineData, "NEXUS.ScrollbackKeepTime=", sizeof "NEXUS.ScrollbackKeepTime=" - 1))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.ScrollbackKeepTime=" - 1;
+			
+			switch (*CopyFrom++)
+			{
+				case 's': //Seconds.
+					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom);
+					break;
+				case 'm':
+					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom) * 60;
+					break;
+				case 'h':
+					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom) * 60 * 60;
+					break;
+				case 'd':
+					NEXUSConfig.ScrollbackKeepTime = atoi(CopyFrom) * ((60 * 60) * 24);
+					break;
+				default:
+					fprintf(stderr, "Bad ScrollbackKeepTinme value, line %u in %s\n", LineNum, ConfigFilePath);
+					break;
+			}
 		}
 		else
 		{

@@ -501,6 +501,8 @@ LoopStart:
 			continue;
 		}
 		
+		//Get rid of expired scrollback.
+		Scrollback_Reap();
 		
 		//We got data.
 		NEXUS_NEXUS2IRC(MessageBuf, Worker);

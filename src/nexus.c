@@ -53,7 +53,9 @@ int main(int argc, char **argv)
 						"--ircnickservpassword=password\n"
 						"--maxsimulclient=1024\n"
 						"--nexusport=6667\n"
-						"--nexuspassword=password\n");
+						"--nexuspassword=password\n"
+						"--scrollbackenabled=true/false\n"
+						"--scrollbackkeeptime=(time)\n");
 				exit(0);
 			}
 			else if (!strncmp(argv[Inc], "--configfile=", sizeof "--configfile=" - 1))
@@ -141,6 +143,36 @@ int main(int argc, char **argv)
 				
 				strncpy(NEXUSConfig.ServerPassword, ArgData, sizeof NEXUSConfig.ServerPassword - 1);
 				NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
+			}
+			else if (!strncmp(argv[Inc], "--scrollbackenabled=", sizeof "--scrollbackenabled=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--scrollbackenabled=" - 1;
+				
+				if (!strcmp(ArgData, "true")) NEXUSConfig.ScrollbackEnabled = true;
+				else NEXUSConfig.ScrollbackEnabled = false;
+			}
+			else if (!strncmp(argv[Inc], "--scrollbackkeeptime=", sizeof "--scrollbackkeeptime=" - 1))
+			{
+				ArgData = argv[Inc] + sizeof "--scrollbackkeeptime=" - 1;
+				
+				switch (*ArgData++)
+				{
+					case 's': //Seconds.
+						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData);
+						break;
+					case 'm':
+						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData) * 60;
+						break;
+					case 'h':
+						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData) * 60 * 60;
+						break;
+					case 'd':
+						NEXUSConfig.ScrollbackKeepTime = atoi(ArgData) * ((60 * 60) * 24);
+						break;
+					default:
+						fputs("Bad value for --scrollbackkeeptime.", stderr);
+						break;
+				}
 			}
 			else
 			{

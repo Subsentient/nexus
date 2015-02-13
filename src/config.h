@@ -3,6 +3,7 @@
 /**Header file for config.c**/
 
 #include <stdbool.h>
+#include <time.h>
 
 #define INTERCLIENTDELAY_DEFAULT 8
 //Structures
@@ -20,6 +21,8 @@ struct NEXUSConfig
 	unsigned short PortNum;
 	char ServerPassword[256];
 	unsigned InterclientDelay; //In 10ths of seconds.
+	bool ScrollbackEnabled; //Generally true.
+	time_t ScrollbackKeepTime; //How long in seconds we keep scrollback.
 };
 
 //Globals
