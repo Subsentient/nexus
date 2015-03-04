@@ -203,6 +203,10 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 			". You are being forwarded to \"%s:%hu\".\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);
 	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 	
+	//For dumb bots that connect, make it abundantly clear what their nick should be.
+	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s NICK :%s\r\n", Client->OriginalNick, Client->Ident, Client->IP, IRCConfig.Nick);
+	Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	
 	//Send the middle.
 	snprintf(OutBuf, sizeof OutBuf,
 			":" NEXUS_FAKEHOST " 372 %s :There are currently %d other instances connected to this NEXUS server.\r\n",
