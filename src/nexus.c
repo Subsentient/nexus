@@ -736,7 +736,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			char ModeLetter = 0;
 			bool SettingMode = false;
 			
-			if (!Worker) return; //Not a channel.
+			if (!Worker) goto ForwardVerbatim; //Not a channel.
 			
 			
 			//Get the channel the mode affects.
@@ -746,7 +746,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			}
 			Channel[Inc] = '\0';
 			
-			if (*Worker == '\0') return; //Corrupted.
+			if (*Worker == '\0') goto ForwardVerbatim; //Gibberish to us but maybe someone can make use of it.
 			
 			while (*Worker == ' ') ++Worker;
 			
@@ -767,7 +767,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			//Look up the mode by its letter.
 			ModeLetter = State_UserModes_Get_Letter2Mode(*Worker);
 			
-			if (!ModeLetter) return; //Not something we can deal with.
+			if (!ModeLetter) goto ForwardVerbatim; //Not something we can deal with.
 			
 			//Now get the nickname.
 			if (!(Worker = strchr(Worker, ' '))) return; //Bad data again.
@@ -786,10 +786,10 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			Nick[Inc] = '\0';
 			
 			//Look up the channel.
-			if (!(ChannelStruct = State_LookupChannel(Channel))) return; //Can't find the channel.
+			if (!(ChannelStruct = State_LookupChannel(Channel))) goto ForwardVerbatim; //Can't find the channel.
 			
 			//Look up this user.
-			if (!(UserStruct = State_GetUserInChannel(Nick, ChannelStruct))) return; //Can't find the nick.
+			if (!(UserStruct = State_GetUserInChannel(Nick, ChannelStruct))) goto ForwardVerbatim; //Can't find the nick.
 			
 			//Now alter their mode accordingly.
 			if (SettingMode)
