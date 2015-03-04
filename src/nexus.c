@@ -437,9 +437,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			if (!(Worker = strstr(Worker, "PRIVMSG "))) return; //Damaged data.
 			Worker += strlen("PRIVMSG ");
 			
-			if (!*Worker) puts("one."); //Damaged.
-			
-			
 			//Copy in the target.
 			for (Inc = 0; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Target - 1; ++Inc, ++Worker)
 			{
@@ -450,8 +447,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			//Go to the data.
 			while (*Worker == ' ') ++Worker;
 			if (*Worker == ':') ++Worker;
-			
-			if (!*Worker) puts("two");
 			
 			//We have data, add it to the scrollback.
 			Scrollback_AddMsg(Worker, Origin, *Target == '#' ? Target : NULL, time(NULL));
