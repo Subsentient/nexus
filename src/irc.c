@@ -147,14 +147,7 @@ bool IRC_GetStatusCode(const char *Message, int *OutNumber)
 
 enum IRCMessageType IRC_GetMessageType(const char *InStream_)
 { //Another function torn out of aqu4bot.
-	char InStreamA[256];
-	
-	//We need lower case for this comparison.
-	strncpy(InStreamA, InStream_, sizeof InStreamA - 1);
-	InStreamA[sizeof InStreamA - 1] = '\0';
-	for (int TInc = 0; (InStreamA[TInc] = tolower(InStreamA[TInc])); ++TInc); //Lower case it
-	
-	const char *InStream = InStreamA;
+	const char *InStream = InStream_;
 	char Command[32];
 	unsigned Inc = 0;
 	
@@ -165,7 +158,7 @@ enum IRCMessageType IRC_GetMessageType(const char *InStream_)
 	
 	for (; InStream[Inc] != ' '  && InStream[Inc] != '\0' && Inc < sizeof Command - 1; ++Inc)
 	{ /*Copy in the command.*/
-		Command[Inc] = InStream[Inc];
+		Command[Inc] = tolower(InStream[Inc]);
 	}
 	Command[Inc] = '\0';
 	
