@@ -442,7 +442,7 @@ enum ServerMessageType Server_GetMessageType(const char *InStream_)
 	
 	for (; InStream[Inc] != ' '  && InStream[Inc] != '\0' && Inc < sizeof Command - 1; ++Inc)
 	{ /*Copy in the command.*/
-		Command[Inc] = InStream[Inc];
+		Command[Inc] = toupper(InStream[Inc]);
 	}
 	Command[Inc] = '\0';
 	
