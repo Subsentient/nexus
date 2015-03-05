@@ -158,7 +158,7 @@ enum IRCMessageType IRC_GetMessageType(const char *InStream_)
 	
 	for (; InStream[Inc] != ' '  && InStream[Inc] != '\0' && Inc < sizeof Command - 1; ++Inc)
 	{ /*Copy in the command.*/
-		Command[Inc] = tolower(InStream[Inc]);
+		Command[Inc] = toupper(InStream[Inc]);
 	}
 	Command[Inc] = '\0';
 	
