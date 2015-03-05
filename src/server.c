@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <ctype.h>
 #ifdef WIN
 #include <winsock2.h>
 #endif 
