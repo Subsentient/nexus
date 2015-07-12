@@ -9,6 +9,8 @@
 #include <time.h>
 #ifdef WIN
 #include <winsock2.h>
+#else
+#include <signal.h>
 #endif //WIN
 #include "netcore.h"
 #include "nexus.h"
@@ -31,7 +33,9 @@ int main(int argc, char **argv)
 	setvbuf(stderr, NULL, _IONBF, 0);
 	
 	puts("NEXUS BNC " NEXUS_VERSION "\n");
-
+#ifndef WIN
+	bool Background = false;
+#endif
 	///Process command line arguments.
 	if (argc > 1)
 	{ //Command line arguments override any values in configuration files.
@@ -44,6 +48,9 @@ int main(int argc, char **argv)
 			{
 				printf("Available options:\n\n"
 						"--configfile=\n"
+#ifndef WIN
+						"--background\n"
+#endif //WIN
 						"--ircserver=myserver.com\n"
 						"--ircport=6667\n"
 						"--ircnick=mynickname\n"
@@ -144,6 +151,13 @@ int main(int argc, char **argv)
 				strncpy(NEXUSConfig.ServerPassword, ArgData, sizeof NEXUSConfig.ServerPassword - 1);
 				NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
 			}
+#ifndef WIN
+			else if (!strcmp(argv[Inc], "--background"))
+			{
+				puts("NEXUS set to background after config load.");
+				Background = true;
+			}
+#endif
 			else if (!strncmp(argv[Inc], "--scrollbackenabled=", sizeof "--scrollbackenabled=" - 1))
 			{
 				ArgData = argv[Inc] + sizeof "--scrollbackenabled=" - 1;
@@ -198,6 +212,29 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+#ifndef WIN
+	if (Background)
+	{
+		pid_t NewPID;
+		
+		puts("Backgrounding.");
+		
+		if ((NewPID = fork()) == -1)
+		{
+			fprintf(stderr, "Failed to fork()!");
+			exit(1);
+		}
+		else if (NewPID > 0)
+		{
+			signal(SIGCHLD, SIG_IGN);
+			exit(0);
+		}
+		else
+		{
+			setsid();
+		}
+	}
+#endif //WIN
 
 #ifdef WIN //Bring up winsock.
 	WSADATA WSAData;
