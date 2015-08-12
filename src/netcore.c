@@ -116,7 +116,7 @@ bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 
 	do
 	{
-		Transferred = send(Descriptor, InMsg, (WriteSize - TotalTransferred), 0);
+		Transferred = send(Descriptor, InMsg + TotalTransferred, (WriteSize - TotalTransferred), 0);
 
 		if (Transferred == -1) //Don't say a word. I mean it.
 		{
