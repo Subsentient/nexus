@@ -19,6 +19,8 @@
 #include "state.h"
 #include "scrollback.h"
 
+#include "substrings/substrings.h"
+
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
 //Globals
@@ -235,9 +237,27 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 		{ //We want to use ourselves as the origin if none specified.
 			Origin = SelfOrigin;
 		}
+		
+		if (SubStrings.StartsWith("\1ACTION ", SWorker->Msg))
+		{
+			char *NewMsg = calloc(strlen(SWorker->Msg) + 1, 1);
 			
-		snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 %s\r\n",
+			//Don't bother trying to understand the arithmetic here.
+			SubStrings.Copy(NewMsg, SWorker->Msg + (sizeof "\1ACTION " - 1), (strlen(SWorker->Msg) + 1) - (sizeof "\1ACTION " - 1));
+			
+			//Chop off the \x01 at the end.
+			SubStrings.StripTrailingChars(NewMsg, "\001");
+			
+			//Build the message.
+			snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 ** %s %s **\r\n",
+					Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, Origin, NewMsg);
+			free(NewMsg);
+		}
+		else
+		{
+			snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 %s\r\n",
 				Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, SWorker->Msg);
+		}
 		
 		//Now send it to the client.
 		Net_Write(Client->Descriptor, ScrollBuf, strlen(ScrollBuf));
