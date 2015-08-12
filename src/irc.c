@@ -289,7 +289,7 @@ bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigne
 
 bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut)
 {
-	char ComplexNick[128], *Worker = ComplexNick;
+	char ComplexNick[256], *Worker = ComplexNick;
 	unsigned Inc = 0;
 	
 	for (; Message[Inc] != ' ' && Message[Inc] != '\0'; ++Inc)
@@ -308,7 +308,6 @@ bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char 
 	
 	if (Worker[Inc] != '!')
 	{
-		*NickOut = 0;
 		*IdentOut = 0;
 		*MaskOut = 0;
 		return false;
@@ -326,8 +325,6 @@ bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char 
 	
 	if (Worker[Inc] != '@')
 	{
-		*NickOut = 0;
-		*IdentOut = 0;
 		*MaskOut = 0;
 		return false;
 	}

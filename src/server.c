@@ -254,7 +254,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 			IRC_BreakdownNick(Origin, Nick, Ident, Mask);
 			
 			snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 ** %s %s **\r\n",
-					Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, Mask, NewMsg);
+					Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, Nick, NewMsg);
 			free(NewMsg);
 		}
 		else
