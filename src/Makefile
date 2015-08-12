@@ -12,6 +12,7 @@ all:
 ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all
 endif
-	$(CC) $(OBJECTS) -o $(OUTFILE) $(CFLAGS)
+	$(MAKE) -C substrings static
+	$(CC) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(CFLAGS)
 clean:
 	rm -f *.o *.gch
