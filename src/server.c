@@ -18,6 +18,7 @@
 #include "nexus.h"
 #include "state.h"
 #include "scrollback.h"
+#include "irc.h"
 
 #include "substrings/substrings.h"
 
@@ -249,8 +250,11 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 			SubStrings.StripTrailingChars(NewMsg, "\001");
 			
 			//Build the message.
+			char Nick[64], Ident[256], Mask[512];
+			IRC_BreakdownNick(Origin, Nick, Ident, Mask);
+			
 			snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 ** %s %s **\r\n",
-					Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, Origin, NewMsg);
+					Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, Mask, NewMsg);
 			free(NewMsg);
 		}
 		else
