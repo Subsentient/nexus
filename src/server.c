@@ -232,7 +232,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 		char TimeBuf[128];
 		const char *Origin = SWorker->Origin;
 		
-		strftime(TimeBuf, sizeof TimeBuf, "%H:%M %Y-%m-%d", TimeStruct);
+		strftime(TimeBuf, sizeof TimeBuf, "%I:%M:%S %p %Y-%m-%d", TimeStruct);
 
 		if (!Origin)
 		{ //We want to use ourselves as the origin if none specified.
