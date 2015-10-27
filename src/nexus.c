@@ -12,6 +12,8 @@
 #else
 #include <signal.h>
 #endif //WIN
+
+#include "substrings/substrings.h"
 #include "netcore.h"
 #include "nexus.h"
 #include "config.h"
@@ -19,6 +21,7 @@
 #include "server.h"
 #include "state.h"
 #include "scrollback.h"
+#include "ignore.h"
 
 //Prototypes
 static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client);
@@ -362,13 +365,14 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			const char *Worker = Tempstream + (sizeof "JOIN" - 1);
 			char Channel[sizeof ((struct ChannelList*)0)->Channel];
 			unsigned Inc = 0;
-			char *OutChannels = malloc((strlen(Message) + 1) + 1024);
+			unsigned OutChannelsSize = (strlen(Message) + 1) + 1024;
+			char *OutChannels = malloc(OutChannelsSize);
 			bool OneToJoin = false;
 			
 			//Turn off throttling of client out messages here because we do it for them.
 			CurrentClient = NULL;
 			
-			strcpy(OutChannels, "JOIN ");
+			SubStrings.Copy(OutChannels, "JOIN ", OutChannelsSize);
 			
 			memcpy(Tempstream, Message, strlen(Message) + 1);
 			
@@ -395,15 +399,15 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 				if (State_LookupChannel(Channel) == NULL)
 				{ //Only forward it if we are not already in that channel.
 					OneToJoin = true;
-					strcat(OutChannels, Channel);
-					strcat(OutChannels, ",");
+					SubStrings.Cat(OutChannels, Channel, OutChannelsSize);
+					SubStrings.Cat(OutChannels, ",", OutChannelsSize);
 				}
 			} while ((Worker = strchr(Worker, ',')));
 			
 			if (OneToJoin)
 			{ //We have some that are still good.
 				OutChannels[strlen(OutChannels) - 1] = '\0'; //Kill comma at the end.
-				strcat(OutChannels, "\r\n");
+				SubStrings.Cat(OutChannels, "\r\n", OutChannelsSize);
 				Net_Write(IRCDescriptor, OutChannels, strlen(OutChannels));
 			}
 			
@@ -446,6 +450,14 @@ void NEXUS_IRC2NEXUS(const char *Message)
 	{
 		char OutBuf[2048];
 		
+		case IRCMSG_NOTICE:
+		{
+			if (!Ignore_Check(Message, NEXUS_IGNORE_NOTICE))
+			{ //It's not ignored, so we should forward it verbatim.
+				goto ForwardVerbatim;
+			}
+			break;
+		}
 		default: //Nothing we explicitly have to deal with
 		{ //Append a \r\n and then send it to everyone.
 		ForwardVerbatim:
@@ -480,6 +492,12 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				Target[Inc] = *Worker;
 			}
 			Target[Inc] = '\0';
+			
+			//Check if we want to ignore it
+			const unsigned ToCheck = *Target == '#' ? NEXUS_IGNORE_CHANMSG : NEXUS_IGNORE_PRIVMSG;
+			
+			//Ignore it.
+			if (Ignore_Check(Origin, ToCheck)) break;
 			
 			//Go to the data.
 			while (*Worker == ' ') ++Worker;
@@ -626,6 +644,52 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			Server_ForwardToAll(OutBuf);
 			break;
 		}
+		case IRCMSG_WHO:
+		{			
+			const char *Worker = Message;
+			
+			if ((Worker = strstr(Worker, "352")) == NULL) break;
+			
+			//Twice, once to get past 352, once to get to the channel name.
+			if (!(Worker = SubStrings.Line.WhitespaceJump(Worker))) break;
+			if (!(Worker = SubStrings.Line.WhitespaceJump(Worker))) break;
+			
+			char Channel[128], Nick[128], Ident[128], Mask[128];
+		
+			//Channel
+			SubStrings.CopyUntilC(Channel, sizeof Channel, &Worker, " ", false);
+			SubStrings.ASCII.LowerS(Channel);
+			
+			//Ident
+			SubStrings.CopyUntilC(Ident, sizeof Ident, &Worker, " ", false);
+			
+			//Mask
+			SubStrings.CopyUntilC(Mask, sizeof Mask, &Worker, " ", false);
+			
+			//Skip past server name; we don't care.
+			Worker = SubStrings.Line.WhitespaceJump(Worker);
+			
+			//Nick
+			SubStrings.CopyUntilC(Nick, sizeof Nick, &Worker, " ", false);
+			
+			
+			//Now see if they are ignored and we need to ghost them.
+			if (Ignore_Check_Separate(Nick, Ident, Mask, NEXUS_IGNORE_VISIBLE))
+			{
+				//Delete them from our users list.
+				struct ChannelList *const Chan = State_LookupChannel(Channel);
+				if (!Chan) break; ///Baaaad data.
+				
+				State_DelUserFromChannel(Nick, Chan);
+				
+				//And tell users they are gone.
+				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s PART %s :\"Ghosted by a NEXUS BNC ignore rule\"\r\n", Nick, Ident, Mask, Channel);
+				Server_ForwardToAll(OutBuf);
+				break;
+			}
+			
+			goto ForwardVerbatim;
+		}
 		case IRCMSG_PART:
 		case IRCMSG_JOIN:
 		case IRCMSG_NICK:
@@ -671,6 +735,10 @@ void NEXUS_IRC2NEXUS(const char *Message)
 						
 						Chan = State_AddChannel(NewChannel);
 						State_AddUserToChannel(IRCConfig.Nick, 0, Chan);
+						
+						//Send a WHO
+						snprintf(OutBuf, sizeof OutBuf, "WHO %s\r\n", NewChannel);
+						Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 						break;
 					}
 					case IRCMSG_PART:
@@ -690,15 +758,18 @@ void NEXUS_IRC2NEXUS(const char *Message)
 						break;
 				}
 			}
+
+			//Should we "see" this?
+			if (Ignore_Check(Message, NEXUS_IGNORE_VISIBLE)) break;
 			
-			//It's not us. Forward verbatim.
-			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
+			//Send it to everyone.
+			char *NewM = malloc(strlen(Message) + 1 + (sizeof "\r\n" - 1));
+			strcpy(NewM, Message);
+			strcat(NewM, "\r\n");
 			
-			for (; Worker; Worker = Worker->Next)
-			{
-				Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
-			}
+			Server_ForwardToAll(NewM);
 			
+			free(NewM);
 			
 			switch (MsgType)
 			{
@@ -890,13 +961,13 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				if (QuitReason)
 				{
 					snprintf(OutBuf, sizeof OutBuf,
-							":" NEXUS_FAKEHOST " PRIVMSG %s :NEXUS was disconnected from the IRC server. "
+							":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :NEXUS was disconnected from the IRC server. "
 							"The reason given was \"%s\". NEXUS is shutting down.\r\n", IRCConfig.Nick, QuitReason + 1);
 				}
 				else
 				{
 					snprintf(OutBuf, sizeof OutBuf,
-							":" NEXUS_FAKEHOST " PRIVMSG %s :NEXUS was disconnected from the IRC server. "
+							":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :NEXUS was disconnected from the IRC server. "
 							"No reason was provided by the server. NEXUS is shutting down.\r\n", IRCConfig.Nick);
 				}
 
@@ -924,7 +995,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 
 static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client)
 { //Processes commands sent to our control nickname.
-	const char *Worker = NULL;
+	const char *Argument = NULL;
 	char PrimaryCommand[64];
 	unsigned Inc = 0;
 	char OutBuf[2048];
@@ -936,7 +1007,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 	PrimaryCommand[Inc] = '\0';
 	
 	//This will be where we find any arguments later.
-	for (Worker = Message + Inc; *Worker == ' '; ++Worker);
+	for (Argument = Message + Inc; *Argument == ' '; ++Argument);
 	
 	if (!strcmp(PrimaryCommand, "quit"))
 	{
@@ -957,6 +1028,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		
 		//Clean up some stuff.
 		Scrollback_Shutdown();
+		Ignore_Shutdown();
 		State_ShutdownChannelList();
 		Server_ClientList_Shutdown();
 		
@@ -1004,6 +1076,90 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 				IRCConfig.Nick);
 		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		return;
+	}
+	else if (!strcmp(PrimaryCommand, "ignore"))
+	{
+		const char *Iter = Argument;
+		
+		char VHost[1024] = { 0 };
+		char Blockages[1024] = { 0 };
+
+		//Get the vhost to perform the operation on
+		SubStrings.CopyUntilC(VHost, sizeof VHost, &Iter, " ", true);
+		
+		//Get the list of blockages
+		SubStrings.Copy(Blockages, Iter, sizeof Blockages);
+	
+		const char *I2 = Blockages;
+		
+		char CurFlag[64];
+		
+		while (SubStrings.CopyUntilC(CurFlag, sizeof CurFlag, &I2, ",", true))
+		{
+			unsigned Flag = 0;
+			
+			bool Adding = false;
+			const char *FlagData = CurFlag + 1;
+			switch (*CurFlag)
+			{ //Adding or removing?
+				case '-':
+					Adding = false;
+					break;
+				case '+':
+					Adding = true;
+					break;
+				default:
+					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Missing operator for blockages list.\r\n", IRCConfig.Nick);
+					Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+					break;
+			}
+			
+			if (!strcmp(FlagData, "CHANMSG"))
+			{
+				Flag |= NEXUS_IGNORE_CHANMSG;
+			}
+			else if (!strcmp(FlagData, "PRIVMSG"))
+			{
+				Flag |= NEXUS_IGNORE_PRIVMSG;
+			}
+			else if (!strcmp(FlagData, "NOTICE"))
+			{
+				Flag |= NEXUS_IGNORE_NOTICE;
+			}
+			else if (!strcmp(FlagData, "VISIBLE"))
+			{
+				Flag |= NEXUS_IGNORE_VISIBLE;
+			}
+			else if (!strcmp(FlagData, "ALL"))
+			{
+				Flag |= NEXUS_IGNORE_ALL;
+			}
+			else
+			{
+				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Bad ignore flag \"%s\"\r\n", IRCConfig.Nick, FlagData);
+				Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				continue;
+			}
+			
+			
+			
+			if (Ignore_Modify(VHost, Adding, Flag))
+			{
+				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Ignore flag %s %s for %s\r\n", IRCConfig.Nick,
+						FlagData, Adding ? "enabled" : "disabled", VHost);
+				Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				continue;
+			}
+			else
+			{
+				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Failed to %s flag %s for %s\r\n", IRCConfig.Nick,
+						Adding ? "enable" : "disable", FlagData, VHost);
+				Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				continue;
+			}
+		}
+		
+		
 	}	
 	else
 	{

@@ -96,22 +96,23 @@ void Scrollback_Shutdown(void)
 		Next = Worker->Next;
 		free(Worker);
 	}
+	
+	ScrollbackCore = NULL;
 }
 
 void Scrollback_Reap(void)
 {
-
-		//Reap expired scrollback.
-		const time_t TimeCompare = time(NULL);
-		
-	SBLoop:
-		for (struct ScrollbackList *SBWorker = ScrollbackCore; SBWorker; SBWorker = SBWorker->Next)
-		{
-			if (SBWorker->Time + NEXUSConfig.ScrollbackKeepTime < TimeCompare)
-			{ //Expired. Reap it.
-				Scrollback_DelMsg(SBWorker);
-				goto SBLoop;
-			}
+	//Reap expired scrollback.
+	const time_t TimeCompare = time(NULL);
+	
+SBLoop:
+	for (struct ScrollbackList *SBWorker = ScrollbackCore; SBWorker; SBWorker = SBWorker->Next)
+	{
+		if (SBWorker->Time + NEXUSConfig.ScrollbackKeepTime < TimeCompare)
+		{ //Expired. Reap it.
+			Scrollback_DelMsg(SBWorker);
+			goto SBLoop;
 		}
+	}
 }
 

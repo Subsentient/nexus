@@ -16,6 +16,7 @@ just torn directly out of aqu4bot.
 #include <winsock2.h>
 #endif
 
+#include "substrings/substrings.h"
 #include "netcore.h"
 #include "config.h"
 #include "server.h"
@@ -250,7 +251,7 @@ void IRC_Pong(const char *Param)
 { //Replies to IRC server's ping request.
 	char PingMsg[1024];
 	
-	snprintf(PingMsg, sizeof PingMsg, "%s\r\n", Param);
+	SubStrings.Copy(PingMsg, Param, sizeof PingMsg);
 	
 	*strchr(PingMsg, 'I') = 'O'; //Turn PING to PONG
 	
