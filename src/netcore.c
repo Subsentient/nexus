@@ -77,8 +77,6 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 		while (*OutStream == '\r' || *OutStream == '\n') *OutStream-- = '\0';
 		
 	}
-	
-	if (IsText && Descriptor == IRCDescriptor && Status > 0) puts(OutStream_);
 
 ReturnTime:
 
