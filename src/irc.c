@@ -37,7 +37,6 @@ bool IRC_Connect(void)
 	char UserString[1024];
 	bool ServerConnectOK = false;
 	char MessageBuf[2048];
-	struct NetReadReturn NRR;
 	int IRCCode = 0;
 	
 	if (!Net_Connect(IRCConfig.Server, IRCConfig.PortNum, &IRCDescriptor))
@@ -55,35 +54,12 @@ bool IRC_Connect(void)
 	
 	while (!ServerConnectOK)
 	{
-		//We use nonblocking reads.
-		while (1)
-		{ ///Read in the response from the server.
-			//We're currently assuming the IRC server won't send us half a string at a time with our nonblocking method.
-			//I should probably do something about that.
-			NRR = Net_Read(IRCDescriptor, MessageBuf, sizeof MessageBuf, true);
-#ifdef WIN
-			if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
-#else
-			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
-#endif
-			{
-				fprintf(stderr, "NEXUS connected to the IRC server but could not read data from it.\n");
-				return false;
-			}
-#ifdef WIN
-			else if (NRR.Errno == WSAEWOULDBLOCK)
-#else
-			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
-#endif
-			{ //No data, restart loop after tiny break.
-#ifdef WIN
-				Sleep(1);
-#else
-				usleep(1000);
-#endif //WIN
-				continue;
-			}
-			else break; //We got what we came for.
+		const bool NRR = Net_Read(IRCDescriptor, MessageBuf, sizeof MessageBuf, true);
+		
+		if (!NRR)
+		{
+			fputs("Failed to connect to IRC server.\n", stderr);
+			return false;
 		}
 		
 		/**Process the line we got.**/
@@ -194,48 +170,8 @@ bool IRC_Disconnect(void)
 }
 
 //Where all IRC data processing begins.
-void IRC_Loop(void)
+void IRC_Loop(const char *IRCBuf)
 {
-	struct NetReadReturn NRR;
-	char IRCBuf[2048];
-	
-	//Check IRC for data.
-	NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
-
-#ifdef WIN
-	if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
-#else
-	if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
-#endif
-	{ //Error.
-		char OutBuf[2048];
-		
-		IRC_Disconnect();
-		
-		//Tell everyone what happened.
-		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
-		Server_ForwardToAll(OutBuf);
-		
-		Server_SendQuit(-1, "NEXUS has lost the connection to the IRC server."); //Now make them quit.
-		Net_ShutdownServer();
-		
-		exit(1);
-	}
-#ifdef WIN
-	else if (NRR.Errno == WSAEWOULDBLOCK)
-#else
-	else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
-#endif
-	{ //No data from the IRC server
-#ifdef WIN
-		Sleep(1);
-#else
-		usleep(1000);
-#endif //WIN
-		
-		return;
-	}
-	
 	//if we get this far, we got data.
 	if (!strncmp(IRCBuf, "PING", sizeof "PING" - 1))
 	{ //Reply to ping and exit.

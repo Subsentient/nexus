@@ -47,7 +47,7 @@ struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct
 bool Server_ClientList_Del(const int Descriptor);
 void Server_ClientList_Shutdown(void);
 bool Server_ForwardToAll(const char *const InStream);
-void Server_Loop(void);
+struct ClientList *Server_AcceptLoop(void);
 void Server_SendQuit(const int Descriptor, const char *const Reason);
 enum ServerMessageType Server_GetMessageType(const char *InStream_);
 

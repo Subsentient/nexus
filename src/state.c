@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 
+#include "substrings/substrings.h"
 #include "state.h"
 
 //Globals
@@ -143,22 +144,17 @@ struct ChannelList *State_LookupChannel(const char *const ChannelName)
 {
 	struct ChannelList *Worker = ChannelListCore;
 	char Compare[2][sizeof ((struct ChannelList*)0)->Channel];
-	unsigned Inc = 0;
-	
-	//Need to make the lookup case insensitive.
-	for (; ChannelName[Inc] != '\0' && Inc < sizeof Compare[0] - 1; ++Inc)
-	{
-		Compare[0][Inc] = tolower(ChannelName[Inc]);
-	}
-	Compare[0][Inc] = '\0';
+
+	//Copy in and lower case our argument.
+	SubStrings.Copy(Compare[0], ChannelName, sizeof Compare[0]);
+	SubStrings.ASCII.LowerS(Compare[0]);
 	
 	for (; Worker; Worker = Worker->Next)
 	{
-		for (Inc = 0; Worker->Channel[Inc] != '\0' && Inc < sizeof Compare[1] - 1; ++Inc)
-		{
-			Compare[1][Inc] = tolower(Worker->Channel[Inc]);
-		}
-		Compare[1][Inc] = '\0';
+		
+		//Copy in and lower case Worker->Channel
+		SubStrings.Copy(Compare[1], Worker->Channel, sizeof Compare[1]);
+		SubStrings.ASCII.LowerS(Compare[1]);
 		
 		if (!strcmp(Compare[0], Compare[1]))
 		{

@@ -25,11 +25,131 @@
 
 //Prototypes
 static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client);
+static void NEXUS_DescriptorSet_Add(const int Descriptor);
+static bool NEXUS_DescriptorSet_Del(const int Descriptor);
+static void NEXUS_DescriptorSet_Wipe(void);
 
+//Globals
+static fd_set DescriptorSet;
+static int DescriptorMax;
+
+
+void MasterLoop(void)
+{
+	while (1)
+	{
+		fd_set Set = DescriptorSet;
+		
+		//select() gives you your results in Set, which is also what it initially reads from.
+		if (select(DescriptorMax + 1, &Set, NULL, NULL, NULL) == -1)
+		{
+			fputs("Failure with select()\n", stderr);
+			exit(1);
+		}
+
+		unsigned Inc = 0;
+		
+		for (; Inc <= DescriptorMax; ++Inc)
+		{
+			if (!FD_ISSET(Inc, &Set)) continue;
+			
+			if (Inc == ServerDescriptor)
+			{ //A client wants to join us.
+				struct ClientList *const Client = Server_AcceptLoop();
+				if (!Client) continue;
+				
+				NEXUS_DescriptorSet_Add(Client->Descriptor);
+				continue;
+			}
+			else if (Inc == IRCDescriptor)
+			{ //Something from IRC.
+				char IRCBuf[2048];
+
+				//Check IRC for data.
+				const bool NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
+			
+				if (!NRR)
+				{ //Error.
+					char OutBuf[2048];
+					
+					IRC_Disconnect();
+					
+					//Tell everyone what happened.
+					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
+					Server_ForwardToAll(OutBuf);
+					
+					Server_SendQuit(-1, "NEXUS has lost the connection to the IRC server."); //Now make them quit.
+					Net_ShutdownServer();
+					
+					exit(1);
+				}
+				
+				//Process the data.
+				IRC_Loop(IRCBuf);
+				continue;
+			}
+			else
+			{ //Client wants something.
+				struct ClientList *Client = Server_ClientList_Lookup(Inc);
+				
+				if (!Client) continue; //BS client
+				
+				char ClientBuf[2048];
+				
+				const bool NRR = Net_Read(Client->Descriptor, ClientBuf, sizeof ClientBuf, true);
+				
+				if (!NRR)
+				{ //he ded
+					close(Client->Descriptor);
+					Server_ClientList_Del(Client->Descriptor);
+					NEXUS_DescriptorSet_Del(Client->Descriptor);
+				}
+				
+				NEXUS_NEXUS2IRC(ClientBuf, Client);
+				continue;
+			}
+
+		}
+	}
+}
+
+static void NEXUS_DescriptorSet_Add(const int Descriptor)
+{
+	if (FD_ISSET(Descriptor, &DescriptorSet)) return;
+	
+	if (Descriptor > DescriptorMax) DescriptorMax = Descriptor;
+	
+	FD_SET(Descriptor, &DescriptorSet);
+}
+
+static bool NEXUS_DescriptorSet_Del(const int Descriptor)
+{
+	if (!FD_ISSET(Descriptor, &DescriptorSet)) return false;
+	
+	if (Descriptor == DescriptorMax)
+	{
+		int Dec = DescriptorMax;
+		
+		for (; !FD_ISSET(Dec, &DescriptorSet); --Dec);
+		
+		DescriptorMax = Dec;
+	}
+	
+	FD_CLR(Descriptor, &DescriptorSet);
+	return true;
+}
+
+static void NEXUS_DescriptorSet_Wipe(void)
+{
+	FD_ZERO(&DescriptorSet);
+}
+
+	
 //Functions;
 int main(int argc, char **argv)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
 	//Print version and whatnot.
+	(void)NEXUS_DescriptorSet_Wipe(); ///Just to shut the compiler up.
 	
 	//Turn off buffering. We hates it! -Gollum
 	setvbuf(stdout, NULL, _IONBF, 0); //Really, all buffering serves to do for us is mess up our console output. No thanks.
@@ -258,6 +378,8 @@ int main(int argc, char **argv)
 	}
 	puts("Done.");
 	
+	//Track the IRC descriptor.
+	NEXUS_DescriptorSet_Add(IRCDescriptor);
 	
 	//Bring up the NEXUS pseudo-IRC-server.
 	printf("Bringing up NEXUS server on port %hu... ", NEXUSConfig.PortNum);
@@ -268,12 +390,10 @@ int main(int argc, char **argv)
 	}
 	puts("Done.");
 	
-	while (1)
-	{
-		IRC_Loop();
-		Server_Loop();
-	}
-	
+	//Track the NEXUS server descriptor
+	NEXUS_DescriptorSet_Add(ServerDescriptor);
+
+	MasterLoop();
 	return 0;
 }
 
@@ -425,12 +545,13 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " PONG " NEXUS_FAKEHOST " %s\r\n", Start);
 			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 			break;
-		}		
+		}
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
 			close(Client->Descriptor);
 			Server_ClientList_Del(Client->Descriptor);
+			NEXUS_DescriptorSet_Del(Client->Descriptor);
 			break;
 		}
 	}

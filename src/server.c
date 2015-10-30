@@ -338,7 +338,6 @@ static void Server_SendChannelRejoin(const struct ChannelList *const Channel, co
 struct ClientList *Server_AcceptLoop(void)
 {
 	struct ClientList TempClient;
-	struct NetReadReturn NRR;
 	char InBuf[2048];
 	struct ClientList *Client = NULL;
 	bool UserProvided = false, NickProvided = false;
@@ -356,34 +355,13 @@ struct ClientList *Server_AcceptLoop(void)
 	/**Continuously try to read their replies until we get them.**/
 	while (!UserProvided || !NickProvided)
 	{ //Wait for their greeting.
-		while (1)
+		const bool NetReadReturn = Net_Read(Client->Descriptor, InBuf, sizeof InBuf, true);
+		
+		if (!NetReadReturn)
 		{
-			NRR = Net_Read(Client->Descriptor, InBuf, sizeof InBuf, true);
-
-#ifdef WIN
-			if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
-#else
-			if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
-#endif
-			{ //We lost them.
-				close(Client->Descriptor); //Close their connection.
-				Server_ClientList_Del(Client->Descriptor); //Delete their record.
-				return NULL;
-			}
-#ifdef WIN
-			else if (NRR.Errno == WSAEWOULDBLOCK)
-#else
-			else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
-#endif
-			{ //They just didn't reply to us yet.
-				continue;
-#ifdef WIN
-				Sleep(1);
-#else
-				usleep(1000);
-#endif
-			}
-			else break;
+			close(Client->Descriptor);
+			Server_ClientList_Del(Client->Descriptor);
+			return NULL;
 		}
 		
 		//Does it start with USER?
@@ -396,6 +374,7 @@ struct ClientList *Server_AcceptLoop(void)
 			if (*NEXUSConfig.ServerPassword && !PasswordProvided)
 			{
 				close(Client->Descriptor);
+				Server_ClientList_Del(Client->Descriptor);
 				return NULL;
 			}
 			
@@ -450,6 +429,9 @@ struct ClientList *Server_AcceptLoop(void)
 		continue;
 	}
 	
+	//Get rid of expired scrollback before we send it to someone.
+	Scrollback_Reap();
+	
 	//Time to welcome them.
 	Server_SendIRCWelcome(Client->Descriptor);
 	
@@ -489,51 +471,3 @@ enum ServerMessageType Server_GetMessageType(const char *InStream_)
 	else return SERVERMSG_UNKNOWN;
 }
 
-
-void Server_Loop(void)
-{ //main loop for the NEXUS server.
-	struct ClientList *Worker = NULL;
-	struct NetReadReturn NRR;
-	char MessageBuf[2048];
-	
-	Server_AcceptLoop();
-
-LoopStart:
-	Worker = ClientListCore; //We set it here and not at the initializer for a reason. Use your brain.
-
-	for (; Worker; Worker = Worker->Next)
-	{
-		NRR = Net_Read(Worker->Descriptor, MessageBuf, sizeof MessageBuf, true);
-
-#ifdef WIN
-		if (NRR.Errno != 0 && NRR.Errno != WSAEWOULDBLOCK)
-#else
-		if (NRR.Status == 0 || (NRR.Status == -1 && NRR.Errno != EWOULDBLOCK))
-#endif
-		{ //Error. DELETE them.
-			close(Worker->Descriptor); //Close the socket.
-			Server_ClientList_Del(Worker->Descriptor);
-			goto LoopStart;
-		}
-#ifdef WIN
-		else if (NRR.Errno == WSAEWOULDBLOCK)
-#else
-		else if (NRR.Status == -1 && NRR.Errno == EWOULDBLOCK)
-#endif
-		{ //No data.
-#ifdef WIN
-			Sleep(1);
-#else
-			usleep(1000);
-#endif
-			continue;
-		}
-		
-		//Get rid of expired scrollback.
-		Scrollback_Reap();
-		
-		//We got data.
-		NEXUS_NEXUS2IRC(MessageBuf, Worker);
-		goto LoopStart; //We might have had our client deleted, so go to beginning.
-	}
-}

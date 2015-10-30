@@ -8,18 +8,14 @@
 #include <stdbool.h>
 
 //Structures
-struct NetReadReturn
-{
-	int Status;
-	int Errno;
-};
+
 
 //Globals
 extern int ServerDescriptor, IRCDescriptor;
 
 //Function prototypes
 bool Net_InitServer(unsigned short PortNum);
-struct NetReadReturn Net_Read(int ClientDescriptor, void *OutStream_, unsigned MaxLength, bool IsText);
+bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText);
 bool Net_Write(int const ClientDescriptor, const void *InMsg, unsigned WriteSize);
 void Net_ShutdownServer(void);
 bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_);

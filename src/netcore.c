@@ -31,19 +31,12 @@ static int SocketFamily;
 
 /*Functions*/
 
-struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
+bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 {
 	int Status = 0;
 	unsigned char Byte = 0;
 	unsigned char *OutStream = OutStream_;
 	unsigned Inc = 0;
-	struct NetReadReturn ReturnVal;	
-#ifdef WIN
-	u_long Value = 1;
-	ioctlsocket(Descriptor, FIONBIO, &Value);
-#else
-	fcntl(Descriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
-#endif
 
 	do
 	{
@@ -56,14 +49,7 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 		{
 			break;
 		}
-#ifdef WIN
-		if (WSAGetLastError() == WSAEWOULDBLOCK)
-#else
-		if (Status == -1 && errno == EWOULDBLOCK)
-#endif
-		{
-			goto ReturnTime;
-		}
+
 
 	} while (++Inc, Status > 0 && Inc < MaxLength);
 	
@@ -78,24 +64,9 @@ struct NetReadReturn Net_Read(int Descriptor, void *OutStream_, unsigned MaxLeng
 		
 	}
 
-ReturnTime:
-
-#ifdef WIN
-	{
-		u_long Value = 0;
-		ioctlsocket(Descriptor, FIONBIO, &Value);
-	}
-#else
-	fcntl(Descriptor, F_SETFL, 0);
-#endif
-
-	ReturnVal.Status = Status;
-#ifdef WIN
-	ReturnVal.Errno = WSAGetLastError();
-#else
-	ReturnVal.Errno = errno;
-#endif
-	return ReturnVal;
+	if (Status == -1) return false;
+	
+	return true;
 }
 
 bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
@@ -197,7 +168,7 @@ bool Net_InitServer(unsigned short PortNum)
 		return false;
 	}
 
-	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, (char*)&True, sizeof(int));
+	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, &True, sizeof(int));
 
 	if (bind(ServerDescriptor, Res->ai_addr, Res->ai_addrlen) == -1)
 	{
@@ -208,12 +179,6 @@ bool Net_InitServer(unsigned short PortNum)
 	listen(ServerDescriptor, NEXUSConfig.MaxSimulConnections);
 
 	freeaddrinfo(Res);
-#ifdef WIN
-	u_long Value = 1;
-	ioctlsocket(ServerDescriptor, FIONBIO, &Value);
-#else
-	fcntl(ServerDescriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
-#endif
 	return true;
 }
 
@@ -247,32 +212,6 @@ bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned 
 
 	ClientDescriptor = accept(ServerDescriptor, &ClientInfo, &SockaddrSize);
 	
-#ifdef WIN
-	if (WSAGetLastError() != 0)
-#else
-	if (ClientDescriptor == -1)
-#endif
-	{
-
-#ifdef WIN
-		if (WSAGetLastError() == WSAEWOULDBLOCK)
-#else
-		if (errno == EWOULDBLOCK)
-#endif //WIN
-		{ //Not an error. Sleep for a moment and then proceed.
-#ifdef WIN //Windows.
-			Sleep(5);
-#else //Unix.
-			usleep(5000);
-#endif //WIN
-		}
-		else
-		{
-			fprintf(stderr, "Failed to accept()!\n");
-			Net_ShutdownServer();
-			exit(1);
-		}
-	}
 			
 	//Get client IP.
 	memset(&Addr, 0, AddrSize);
