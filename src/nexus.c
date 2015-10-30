@@ -550,8 +550,8 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		{
 			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
 			close(Client->Descriptor);
-			Server_ClientList_Del(Client->Descriptor);
 			NEXUS_DescriptorSet_Del(Client->Descriptor);
+			Server_ClientList_Del(Client->Descriptor);
 			break;
 		}
 	}
