@@ -7,18 +7,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 #ifdef WIN
+
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT  0x501
+#endif //_WIN32_WINNT
+
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
+
 #else
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
 #endif
+
 #include <errno.h>
 #include <fcntl.h>
 #include "netcore.h"
@@ -168,7 +177,7 @@ bool Net_InitServer(unsigned short PortNum)
 		return false;
 	}
 
-	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, &True, sizeof(int));
+	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, (void*)&True, sizeof(int)); //The cast shuts up Windows compilation.
 
 	if (bind(ServerDescriptor, Res->ai_addr, Res->ai_addrlen) == -1)
 	{
