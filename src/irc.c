@@ -188,6 +188,7 @@ void IRC_Pong(const char *Param)
 	char PingMsg[1024];
 	
 	SubStrings.Copy(PingMsg, Param, sizeof PingMsg);
+	SubStrings.Cat(PingMsg, "\r\n", sizeof PingMsg);
 	
 	*strchr(PingMsg, 'I') = 'O'; //Turn PING to PONG
 	
