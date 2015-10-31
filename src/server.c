@@ -359,7 +359,7 @@ struct ClientList *Server_AcceptLoop(void)
 		
 		if (!NetReadReturn)
 		{
-			close(Client->Descriptor);
+			Net_Close(Client->Descriptor);
 			Server_ClientList_Del(Client->Descriptor);
 			return NULL;
 		}
@@ -373,7 +373,7 @@ struct ClientList *Server_AcceptLoop(void)
 			//If we want a password, WE WANT A PASSWORD. You're supposed to send PASS first, dunce!
 			if (*NEXUSConfig.ServerPassword && !PasswordProvided)
 			{
-				close(Client->Descriptor);
+				Net_Close(Client->Descriptor);
 				Server_ClientList_Del(Client->Descriptor);
 				return NULL;
 			}
@@ -396,7 +396,7 @@ struct ClientList *Server_AcceptLoop(void)
 			//If we want a password, WE WANT A PASSWORD.
 			if (*NEXUSConfig.ServerPassword && !PasswordProvided)
 			{
-				close(Client->Descriptor);
+				Net_Close(Client->Descriptor);
 				return NULL;
 			}
 			
@@ -422,7 +422,7 @@ struct ClientList *Server_AcceptLoop(void)
 			if (!strcmp(TW, NEXUSConfig.ServerPassword)) PasswordProvided = true;
 			else
 			{ //Wrong password.
-				close(Client->Descriptor);
+				Net_Close(Client->Descriptor);
 				return NULL;
 			}
 		}

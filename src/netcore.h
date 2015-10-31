@@ -20,5 +20,6 @@ bool Net_Write(int const ClientDescriptor, const void *InMsg, unsigned WriteSize
 void Net_ShutdownServer(void);
 bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_);
 bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen);
+bool Net_Close(const int Descriptor);
 
 #endif //__NETCORE_HEADER__

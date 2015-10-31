@@ -166,7 +166,7 @@ bool IRC_Disconnect(void)
 	snprintf(OutBuf, sizeof OutBuf, "QUIT :NEXUS BNC " NEXUS_VERSION " shutting down.\r\n");
 	Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 	
-	return !close(IRCDescriptor);
+	return Net_Close(IRCDescriptor);
 }
 
 //Where all IRC data processing begins.

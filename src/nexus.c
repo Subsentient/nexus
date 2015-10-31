@@ -100,7 +100,7 @@ void MasterLoop(void)
 				
 				if (!NRR)
 				{ //he ded
-					close(Client->Descriptor);
+					Net_Close(Client->Descriptor);
 					Server_ClientList_Del(Client->Descriptor);
 					NEXUS_DescriptorSet_Del(Client->Descriptor);
 				}
@@ -549,7 +549,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		case SERVERMSG_QUIT:
 		{
 			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
-			close(Client->Descriptor);
+			Net_Close(Client->Descriptor);
 			NEXUS_DescriptorSet_Del(Client->Descriptor);
 			Server_ClientList_Del(Client->Descriptor);
 			break;

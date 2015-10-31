@@ -191,6 +191,15 @@ bool Net_InitServer(unsigned short PortNum)
 	return true;
 }
 
+bool Net_Close(const int Descriptor)
+{
+#ifdef WIN
+	return !closesocket(Descriptor);
+#else
+	return !close(Descriptor);
+#endif //WIN
+}
+
 void Net_ShutdownServer(void)
 {
 	struct ClientList *Worker = ClientListCore;
@@ -198,11 +207,11 @@ void Net_ShutdownServer(void)
 	//Close all connections to clients.
 	for (; Worker; Worker = Worker->Next)
 	{
-		close(Worker->Descriptor);
+		Net_Close(Worker->Descriptor);
 	}
 	
 	Server_ClientList_Shutdown(); //Free list of clients.
-	close(ServerDescriptor); //Close the main server socket.
+	Net_Close(ServerDescriptor); //Close the main server socket.
 	ServerDescriptor = 0;
 }
 
