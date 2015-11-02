@@ -103,6 +103,7 @@ void MasterLoop(void)
 					Net_Close(Client->Descriptor);
 					Server_ClientList_Del(Client->Descriptor);
 					NEXUS_DescriptorSet_Del(Client->Descriptor);
+					continue;
 				}
 				
 				NEXUS_NEXUS2IRC(ClientBuf, Client);
