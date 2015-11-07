@@ -50,6 +50,7 @@ bool Server_ForwardToAll(const char *const InStream);
 struct ClientList *Server_AcceptLoop(void);
 void Server_SendQuit(const int Descriptor, const char *const Reason);
 enum ServerMessageType Server_GetMessageType(const char *InStream_);
+bool Server_NukeClient(const int Descriptor);
 
 //Globals
 extern struct ClientList *ClientListCore;

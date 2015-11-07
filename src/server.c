@@ -153,6 +153,20 @@ bool Server_ForwardToAll(const char *const InStream)
 	return true;
 }
 
+bool Server_NukeClient(const int Descriptor)
+{ //Close the descriptor, remove from select() tracking, and purge him from our minds.
+	struct ClientList *Client = Server_ClientList_Lookup(Descriptor);
+
+	if (!Client) return false;
+	
+	Net_Close(Client->Descriptor);
+	NEXUS_DescriptorSet_Del(Client->Descriptor);
+	Server_ClientList_Del(Client->Descriptor);
+	
+	return true;
+
+}
+
 void Server_SendQuit(const int Descriptor, const char *const Reason)
 { //Tells all clients or just one client to quit
 	struct ClientList *Worker = ClientListCore;

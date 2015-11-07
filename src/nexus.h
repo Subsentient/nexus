@@ -14,5 +14,6 @@
 void NEXUS_Loop(void);
 void NEXUS_IRC2NEXUS(const char *Message);
 void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client);
-
+void NEXUS_DescriptorSet_Add(const int Descriptor);
+bool NEXUS_DescriptorSet_Del(const int Descriptor);
 #endif //__NEXUS_HEADER__

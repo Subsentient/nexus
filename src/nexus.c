@@ -7,10 +7,9 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <time.h>
+#include <signal.h>
 #ifdef WIN
 #include <winsock2.h>
-#else
-#include <signal.h>
 #endif //WIN
 
 #include "substrings/substrings.h"
@@ -25,9 +24,6 @@
 
 //Prototypes
 static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client);
-static void NEXUS_DescriptorSet_Add(const int Descriptor);
-static bool NEXUS_DescriptorSet_Del(const int Descriptor);
-static void NEXUS_DescriptorSet_Wipe(void);
 
 //Globals
 static fd_set DescriptorSet;
@@ -114,7 +110,7 @@ void MasterLoop(void)
 	}
 }
 
-static void NEXUS_DescriptorSet_Add(const int Descriptor)
+void NEXUS_DescriptorSet_Add(const int Descriptor)
 {
 	if (FD_ISSET(Descriptor, &DescriptorSet)) return;
 	
@@ -123,7 +119,7 @@ static void NEXUS_DescriptorSet_Add(const int Descriptor)
 	FD_SET(Descriptor, &DescriptorSet);
 }
 
-static bool NEXUS_DescriptorSet_Del(const int Descriptor)
+bool NEXUS_DescriptorSet_Del(const int Descriptor)
 {
 	if (!FD_ISSET(Descriptor, &DescriptorSet)) return false;
 	
@@ -140,21 +136,20 @@ static bool NEXUS_DescriptorSet_Del(const int Descriptor)
 	return true;
 }
 
-static void NEXUS_DescriptorSet_Wipe(void)
-{
-	FD_ZERO(&DescriptorSet);
-}
 
 	
 //Functions;
 int main(int argc, char **argv)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
 	//Print version and whatnot.
-	(void)NEXUS_DescriptorSet_Wipe(); ///Just to shut the compiler up.
-	
+
 	//Turn off buffering. We hates it! -Gollum
 	setvbuf(stdout, NULL, _IONBF, 0); //Really, all buffering serves to do for us is mess up our console output. No thanks.
 	setvbuf(stderr, NULL, _IONBF, 0);
+	
+	
+	//Ignore sigpipe from send() in Net_Write()
+	signal(SIGPIPE, SIG_IGN);
 	
 	puts("NEXUS BNC " NEXUS_VERSION "\n");
 #ifndef WIN
