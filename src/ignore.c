@@ -9,7 +9,7 @@
 #include "substrings/substrings.h"
 #include "irc.h"
 #include "ignore.h"
-
+#include "nexus.h"
 static struct IgnoreList *IgnoreCore;
 
 static bool Ignore_Del(struct IgnoreList *Delete);

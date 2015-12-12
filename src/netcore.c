@@ -33,6 +33,7 @@
 #include "netcore.h"
 #include "config.h"
 #include "server.h"
+#include "nexus.h"
 
 /*Globals*/
 int ServerDescriptor, IRCDescriptor;
@@ -78,7 +79,7 @@ bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 	return true;
 }
 
-bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
+bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
 {
 	unsigned Transferred = 0, TotalTransferred = 0;
 
@@ -106,6 +107,11 @@ bool Net_Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 		TotalTransferred += Transferred;
 	} while (WriteSize > TotalTransferred);
 
+	if (Descriptor == IRCDescriptor)
+	{
+		puts(InMsg);
+	}
+	
 	return true;
 }
 

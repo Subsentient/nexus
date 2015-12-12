@@ -35,18 +35,47 @@ void MasterLoop(void)
 	while (1)
 	{
 		fd_set Set = DescriptorSet;
+		fd_set ErrSet = Set;
 		
 		//select() gives you your results in Set, which is also what it initially reads from.
-		if (select(DescriptorMax + 1, &Set, NULL, NULL, NULL) == -1)
+		if (select(DescriptorMax + 1, &Set, NULL, &ErrSet, NULL) == -1)
 		{
 			fputs("Failure with select()\n", stderr);
-			exit(1);
+			Exit(1);
 		}
 
 		unsigned Inc = 0;
 		
 		for (; Inc <= DescriptorMax; ++Inc)
 		{
+			//Process errors.
+			if (FD_ISSET(Inc, &ErrSet))
+			{
+				if (Inc == IRCDescriptor)
+				{
+					goto Errorrrz; //basically says we ded
+				}
+				
+				
+				struct ClientList *Client = Server_ClientList_Lookup(Inc);
+				
+				//Not a whole lot we can do.
+				if (!Client) continue;
+				
+				Net_Close(Client->Descriptor);
+				NEXUS_DescriptorSet_Del(Client->Descriptor);
+				Server_ClientList_Del(Client->Descriptor);
+				
+				//Remove it from the 'read' set if it's there.
+				if (FD_ISSET(Inc, &Set))
+				{
+					FD_CLR(Inc, &Set);
+					if (Inc == DescriptorMax) --DescriptorMax;
+				}
+				
+				continue;
+			}
+			
 			if (!FD_ISSET(Inc, &Set)) continue;
 			
 			if (Inc == ServerDescriptor)
@@ -67,7 +96,7 @@ void MasterLoop(void)
 				if (!NRR)
 				{ //Error.
 					char OutBuf[2048];
-					
+				Errorrrz:
 					IRC_Disconnect();
 					
 					//Tell everyone what happened.
@@ -77,7 +106,7 @@ void MasterLoop(void)
 					Server_SendQuit(-1, "NEXUS has lost the connection to the IRC server."); //Now make them quit.
 					Net_ShutdownServer();
 					
-					exit(1);
+					Exit(1);
 				}
 				
 				//Process the data.
@@ -182,7 +211,7 @@ int main(int argc, char **argv)
 						"--nexuspassword=password\n"
 						"--scrollbackenabled=true/false\n"
 						"--scrollbackkeeptime=(time)\n");
-				exit(0);
+				Exit(0);
 			}
 			else if (!strncmp(argv[Inc], "--configfile=", sizeof "--configfile=" - 1))
 			{ //Allow specifying a config file location.
@@ -314,7 +343,7 @@ int main(int argc, char **argv)
 			else
 			{
 				fprintf(stderr, "Bad comand line option \"%s\". See --help for a list of options.\n", argv[Inc]);
-				exit(1);
+				Exit(1);
 			}
 		}
 	}
@@ -341,12 +370,12 @@ int main(int argc, char **argv)
 		if ((NewPID = fork()) == -1)
 		{
 			fprintf(stderr, "Failed to fork()!");
-			exit(1);
+			Exit(1);
 		}
 		else if (NewPID > 0)
 		{
 			signal(SIGCHLD, SIG_IGN);
-			exit(0);
+			Exit(0);
 		}
 		else
 		{
@@ -361,7 +390,7 @@ int main(int argc, char **argv)
     if (WSAStartup(MAKEWORD(1,1), &WSAData) != 0)
     { /*Initialize winsock*/
         fprintf(stderr, "Unable to initialize WinSock2!");
-        exit(1);
+        Exit(1);
     }
 #endif //WIN
 	
@@ -407,6 +436,14 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		default: //Nothing we care about.
 		{
 		ForwardVerbatim:
+		
+			if (!*Message)
+			{ //Ded client.
+				Net_Close(Client->Descriptor);
+				NEXUS_DescriptorSet_Del(Client->Descriptor);
+				Server_ClientList_Del(Client->Descriptor);
+				return;
+			}
 			//Append \r\n and send to IRC server.
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
 			Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
@@ -1090,11 +1127,13 @@ void NEXUS_IRC2NEXUS(const char *Message)
 
 					
 				Server_ForwardToAll(OutBuf);
+				SubStrings.StripTrailingChars(OutBuf, "\r\n");
+				puts(OutBuf);
 				
 				IRC_Disconnect(); //Close the IRC server connection.
 				Server_SendQuit(-1, "IRC server sent NEXUS a QUIT command."); //Tell all clients to quit.
 				Net_ShutdownServer(); //Bring down the NEXUS server.
-				exit(1);
+				Exit(1);
 			}
 			
 			//Yay! Not us!
@@ -1149,7 +1188,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		State_ShutdownChannelList();
 		Server_ClientList_Shutdown();
 		
-		exit(0);
+		Exit(0);
 	}
 	else if (!strcmp(PrimaryCommand, "status")) //They want a list of clients and whatnot.
 	{

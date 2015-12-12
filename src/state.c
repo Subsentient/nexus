@@ -10,6 +10,7 @@
 
 #include "substrings/substrings.h"
 #include "state.h"
+#include "nexus.h"
 
 //Globals
 struct ChannelList *ChannelListCore;

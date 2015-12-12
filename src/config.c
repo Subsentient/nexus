@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include "config.h"
-
+#include "nexus.h"
 #define CONFIG_DIR ".nexus"
 #define CONFIG_FILE "NEXUS.conf"
 

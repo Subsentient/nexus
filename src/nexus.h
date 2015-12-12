@@ -4,7 +4,7 @@
 
 #ifndef __NEXUS_HEADER__
 #define __NEXUS_HEADER__
-
+#define Exit(Code) printf("Exit code %s at %s:%d\n", #Code, __FILE__, __LINE__); exit(Code)
 #include <stdbool.h>
 #include "server.h"
 

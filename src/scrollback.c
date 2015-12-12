@@ -4,6 +4,8 @@
 
 #include "scrollback.h"
 #include "config.h"
+#include "nexus.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
