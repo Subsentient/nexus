@@ -44,7 +44,7 @@ void MasterLoop(void)
 			Exit(1);
 		}
 
-		unsigned Inc = 0;
+		int Inc = 0;
 		
 		for (; Inc <= DescriptorMax; ++Inc)
 		{
@@ -91,7 +91,8 @@ void MasterLoop(void)
 				char IRCBuf[2048];
 
 				//Check IRC for data.
-				const bool NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
+				bool NRR;
+				NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
 			
 				if (!NRR)
 				{ //Error.
@@ -187,7 +188,7 @@ int main(int argc, char **argv)
 	///Process command line arguments.
 	if (argc > 1)
 	{ //Command line arguments override any values in configuration files.
-		unsigned Inc = 1;
+		int Inc = 1;
 		const char *ArgData = NULL;
 		
 		for (; Inc < argc; ++Inc)
@@ -514,12 +515,12 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_JOIN:
 		{ //Don't allow us to send joins for channels we are already in.
-			char *Tempstream = malloc(strlen(Message) + 1);
-			const char *Worker = Tempstream + (sizeof "JOIN" - 1);
+			char *Tempstream = (char*)malloc(strlen(Message) + 1);
+			char *Worker = Tempstream + (sizeof "JOIN" - 1);
 			char Channel[sizeof ((struct ChannelList*)0)->Channel];
 			unsigned Inc = 0;
 			unsigned OutChannelsSize = (strlen(Message) + 1) + 1024;
-			char *OutChannels = malloc(OutChannelsSize);
+			char *OutChannels = (char*)malloc(OutChannelsSize);
 			bool OneToJoin = false;
 			
 			//Turn off throttling of client out messages here because we do it for them.
@@ -571,7 +572,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_PING:
 		{ //They're doing a lag check. Give them OUR response.
-			char *Start = strchr(Message, ':');
+			char *Start = (char*)strchr(Message, ':');
 			
 			if (!Start) break;
 			
@@ -666,7 +667,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		{
 			unsigned Inc = 0;
 			char NewTopic[1024];
-			char Channel[256], *Worker = strchr(Message, '#');
+			char Channel[256], *Worker = strchr((char*)Message, '#');
 			struct ChannelList *ChannelStruct = NULL;
 			
 			if (!Worker) return; //Corrupt data.
@@ -700,7 +701,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		case IRCMSG_TOPICORIGIN:
 		{ //Where the topic came from.
 			char Channel[256], Setter[256];
-			char *Worker = strchr(Message, '#');
+			char *Worker = (char*)strchr(Message, '#');
 			unsigned WhenSet = 0; //When the topic was set.
 			unsigned Inc = 0;
 			struct ChannelList *ChannelStruct = NULL;
@@ -917,7 +918,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			if (Ignore_Check(Message, NEXUS_IGNORE_VISIBLE)) break;
 			
 			//Send it to everyone.
-			char *NewM = malloc(strlen(Message) + 1 + (sizeof "\r\n" - 1));
+			char *NewM = (char*)malloc(strlen(Message) + 1 + (sizeof "\r\n" - 1));
 			strcpy(NewM, Message);
 			strcat(NewM, "\r\n");
 			
@@ -942,7 +943,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					
 					for (; Worker; Worker = Worker->Next)
 					{
-						struct UserList *User = State_GetUserInChannel(Nick, Worker);
+						struct _UserList *User = State_GetUserInChannel(Nick, Worker);
 						unsigned char Modes = 0;
 						
 						//Doesn't exist in that channel.
@@ -987,7 +988,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		{
 			const char *Worker = strchr(Message, '#');
 			char Channel[256], Nick[64];
-			struct UserList *UserStruct = NULL;
+			struct _UserList *UserStruct = NULL;
 			struct ChannelList *ChannelStruct = NULL;
 			unsigned Inc = 0;
 			char ModeLetter = 0;

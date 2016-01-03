@@ -1,9 +1,9 @@
-CFLAGS = -std=gnu99 -pedantic -Wall -g -O0
+CXXFLAGS = -std=c++11 -pedantic -Wall -g -O0
 OUTFILE = ../NEXUS
-OBJECTS = config.c netcore.c irc.c state.c server.c nexus.c scrollback.c ignore.c
+OBJECTS = config.cpp netcore.cpp irc.cpp state.cpp server.cpp nexus.cpp scrollback.cpp ignore.cpp
 
 ifeq ($(OS),WIN)
-	CFLAGS += -lws2_32 -DWIN
+	CXXFLAGS += -lws2_32 -DWIN
 	OUTFILE = ../NEXUS.exe
 	OBJECTS += ../win32/win.o
 endif
@@ -13,7 +13,7 @@ ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all
 endif
 	$(MAKE) -C substrings static
-	$(CC) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(CFLAGS)
+	$(CXX) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(CXXFLAGS)
 clean:
 	$(MAKE) -C substrings clean
 	rm -f *.o *.gch

@@ -30,7 +30,7 @@ enum IRCMessageType
 	IRCMSG_TOPIC,
 	IRCMSG_TOPICORIGIN,
 	IRCMSG_NAMES,
-	IRCMSG_WHO,
+	IRCMSG_WHO
 };
 
 //Functions

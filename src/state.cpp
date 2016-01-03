@@ -25,7 +25,7 @@ struct ChannelList *State_AddChannel(const char *const Channel)
 	
 	if (!ChannelListCore)
 	{ //We're the first.
-		Worker = ChannelListCore = calloc(1, sizeof(struct ChannelList));
+		Worker = ChannelListCore = (struct ChannelList*)calloc(1, sizeof(struct ChannelList));
 	}
 	else
 	{ //Not the first.
@@ -41,7 +41,7 @@ struct ChannelList *State_AddChannel(const char *const Channel)
 		//Skip to a free Next.
 		for (Worker = ChannelListCore; Worker->Next; Worker = Worker->Next);
 		
-		Worker->Next = calloc(1, sizeof(struct ChannelList));
+		Worker->Next = (struct ChannelList*)calloc(1, sizeof(struct ChannelList));
 		Worker->Next->Prev = Worker;
 		Worker = Worker->Next;
 	}
@@ -104,13 +104,13 @@ void State_ShutdownChannelList(void)
 	}
 }
 
-struct UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel)
+struct _UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel)
 {
-	struct UserList *Worker = Channel->UserList;
+	struct _UserList *Worker = Channel->UserList;
 	
 	if (!Worker)
 	{
-		Worker = Channel->UserList = calloc(1, sizeof(struct UserList));
+		Worker = Channel->UserList = (struct _UserList*)calloc(1, sizeof(struct _UserList));
 	}
 	else
 	{
@@ -126,7 +126,7 @@ struct UserList *State_AddUserToChannel(const char *Nick, const unsigned char Mo
 		//Skip to a NULL Next.
 		for (Worker = Channel->UserList; Worker->Next; Worker = Worker->Next);
 		
-		Worker->Next = calloc(1, sizeof(struct UserList));
+		Worker->Next = (struct _UserList*)calloc(1, sizeof(struct _UserList));
 		Worker->Next->Prev = Worker;
 		Worker = Worker->Next;
 	}
@@ -166,9 +166,9 @@ struct ChannelList *State_LookupChannel(const char *const ChannelName)
 	return NULL;
 }
 
-struct UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel)
+struct _UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel)
 { //Looks up the user structure for the specified nick in the specified channel.
-	struct UserList *Worker = Channel->UserList;
+	struct _UserList *Worker = Channel->UserList;
 	
 	for (; Worker; Worker = Worker->Next)
 	{
@@ -184,7 +184,7 @@ struct UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Ch
 
 bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel)
 {
-	struct UserList *Worker = Channel->UserList;
+	struct _UserList *Worker = Channel->UserList;
 	
 	for (; Worker; Worker = Worker->Next)
 	{
@@ -218,7 +218,7 @@ bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel)
 
 static void State_DelAllChannelUsers(struct ChannelList *Channel)
 {
-	struct UserList *Worker = Channel->UserList, *Next;
+	struct _UserList *Worker = Channel->UserList, *Next;
 	
 	for (; Worker; Worker = Next)
 	{

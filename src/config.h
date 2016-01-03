@@ -7,12 +7,12 @@
 
 #define INTERCLIENTDELAY_DEFAULT 8
 //Structures
-struct IRCConfig
+struct _IRCConfig
 {
+	unsigned short PortNum;
 	char Nick[64], Ident[128], RealName[256];
 	char Server[1024];
 	char NickServUser[64], NickServPassword[256]; //Nickserv login and whatnot.
-	unsigned short PortNum;
 };
 
 struct NEXUSConfig
@@ -27,7 +27,7 @@ struct NEXUSConfig
 
 //Globals
 extern struct NEXUSConfig NEXUSConfig;
-extern struct IRCConfig IRCConfig;
+extern struct _IRCConfig IRCConfig;
 extern char ConfigFilePath[1024];
 
 //Functions

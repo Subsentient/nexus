@@ -29,13 +29,13 @@ bool Ignore_Add(const char *Message, const unsigned WhatToBlock)
 	
 	if (!Worker)
 	{
-		IgnoreCore = Worker = calloc(1, sizeof(struct IgnoreList));
+		IgnoreCore = Worker = (struct IgnoreList*)calloc(1, sizeof(struct IgnoreList));
 	}
 	else
 	{
 		while (Worker->Next) Worker = Worker->Next;
 		
-		Worker->Next = calloc(1, sizeof(struct IgnoreList));
+		Worker->Next = (struct IgnoreList*)calloc(1, sizeof(struct IgnoreList));
 		Worker->Next->Prev = Worker;
 		Worker = Worker->Next;
 	}

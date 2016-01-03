@@ -18,11 +18,11 @@
 
 char ConfigFilePath[1024]; //We need to get the user's home directory.
 
-struct IRCConfig IRCConfig = { .PortNum = IRC_PORT_DEFAULT };
+struct _IRCConfig IRCConfig = { IRC_PORT_DEFAULT };
 
-struct NEXUSConfig NEXUSConfig = { .MaxSimulConnections = NEXUS_MAXSIMUL_DEFAULT, .PortNum = NEXUS_PORT_DEFAULT,
-								.InterclientDelay = INTERCLIENTDELAY_DEFAULT, .ScrollbackEnabled = true,
-								.ScrollbackKeepTime = (60 * 60) * 8 //Eight hour default
+struct NEXUSConfig NEXUSConfig = { NEXUS_MAXSIMUL_DEFAULT, NEXUS_PORT_DEFAULT,
+								 { '\0' }, INTERCLIENTDELAY_DEFAULT, true,
+								(60 * 60) * 8 //Eight hour default
 								};
 
 bool Config_ReadConfig(void)
@@ -52,7 +52,7 @@ bool Config_ReadConfig(void)
 	}
 	
 	//Allocate space.
-	ConfigData = malloc(FileStat.st_size + 1);
+	ConfigData = new char[FileStat.st_size + 1];
 	
 	//Read in the config file.
 	fread(ConfigData, 1, FileStat.st_size, FD);
@@ -222,6 +222,7 @@ bool Config_ReadConfig(void)
 		}
 	} while (++LineNum, (Worker = strpbrk(Worker, "\r\n")));
 
+	delete[] ConfigData;
 	return true;
 }
 

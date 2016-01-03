@@ -20,30 +20,30 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 	
 	if (!Worker)
 	{
-		Worker = ScrollbackCore = calloc(1, sizeof(struct ScrollbackList));
+		Worker = ScrollbackCore = (struct ScrollbackList*)calloc(1, sizeof(struct ScrollbackList));
 	}
 	else
 	{
 		for (; Worker->Next; Worker = Worker->Next); //Skip to a free Next.
 		
-		Worker->Next = calloc(1, sizeof(struct ScrollbackList));
+		Worker->Next = (struct ScrollbackList*)calloc(1, sizeof(struct ScrollbackList));
 		Worker->Next->Prev = Worker;
 		Worker = Worker->Next;
 	}
 	
 		
-	Worker->Msg = malloc(strlen(Msg) + 1);
+	Worker->Msg = (const char*)malloc(strlen(Msg) + 1);
 	strcpy((char*)Worker->Msg, Msg); //These pointers are constant but it's safe to cast them to mutable.
 	
 	if (Origin)
 	{ //if it's null, it's from us and we just want it to show in scrollback.
-		Worker->Origin = malloc(strlen(Origin) + 1);
+		Worker->Origin = (const char*)malloc(strlen(Origin) + 1);
 		strcpy((char*)Worker->Origin, Origin);
 	}
 	
 	if (Target)
 	{ //if it's null we send to ourselves.
-		Worker->Target = malloc(strlen(Target) + 1);
+		Worker->Target = (const char*)malloc(strlen(Target) + 1);
 		strcpy((char*)Worker->Target, Target);
 	}
 	

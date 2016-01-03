@@ -45,7 +45,7 @@ bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 {
 	int Status = 0;
 	unsigned char Byte = 0;
-	unsigned char *OutStream = OutStream_;
+	unsigned char *OutStream = static_cast<unsigned char*>(OutStream_);
 	unsigned Inc = 0;
 
 	do
@@ -67,7 +67,7 @@ bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 	{
 		*OutStream = '\0'; //Null terminate.
 		
-		OutStream = (unsigned char*)OutStream_ + strlen(OutStream_) - 1;
+		OutStream = static_cast<unsigned char*>(OutStream_) + strlen(static_cast<const char*>(OutStream_)) - 1;
 		
 		//Kill ending whitespace.
 		while (*OutStream == '\r' || *OutStream == '\n') *OutStream-- = '\0';
@@ -99,7 +99,7 @@ bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
 	{
 		Transferred = send(Descriptor, (char*)InMsg + TotalTransferred, (WriteSize - TotalTransferred), 0);
 
-		if (Transferred == -1) //Don't say a word. I mean it.
+		if (Transferred == (unsigned)-1) //Don't say a word. I mean it.
 		{
 			return false;
 		}
@@ -109,7 +109,7 @@ bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
 
 	if (Descriptor == IRCDescriptor)
 	{
-		puts(InMsg);
+		puts(static_cast<const char*>(InMsg));
 	}
 	
 	return true;
@@ -118,7 +118,7 @@ bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
 bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_)
 {
 
-	char *FailMsg = "Failed to establish a connection to the server:";
+	char *FailMsg = (char*)"Failed to establish a connection to the server:";
 	struct sockaddr_in SocketStruct;
 	struct hostent *HostnameStruct;
 	
@@ -143,7 +143,7 @@ bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescript
 	SocketStruct.sin_family = AF_INET;
 	SocketStruct.sin_port = htons(PortNum);
 	
-	if (connect(*SocketDescriptor_, (void*)&SocketStruct, sizeof SocketStruct) != 0)
+	if (connect(*SocketDescriptor_, (const sockaddr*)&SocketStruct, sizeof SocketStruct) != 0)
 	{
 		
 		fprintf(stderr, "Failed to connect to server \"%s\".\n", InHost);
@@ -239,7 +239,7 @@ bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned 
 			
 	//Get client IP.
 	memset(&Addr, 0, AddrSize);
-	getpeername(ClientDescriptor, (void*)&Addr, &AddrSize);
+	getpeername(ClientDescriptor, (sockaddr*)&Addr, &AddrSize);
 	
 #ifdef WIN
 	WSAAddressToString(&ClientInfo, sizeof ClientInfo, NULL, OutIPAddr, (DWORD*)&IPAddrMaxLen);

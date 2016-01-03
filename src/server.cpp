@@ -55,12 +55,12 @@ struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct
 	
 	if (!ClientListCore)
 	{
-		Worker = ClientListCore = calloc(1, sizeof(struct ClientList)); //use calloc to zero it out
+		Worker = ClientListCore = (struct ClientList*)calloc(1, sizeof(struct ClientList)); //use calloc to zero it out
 	}
 	else
 	{
 		while (Worker->Next) Worker = Worker->Next;
-		Worker->Next = calloc(1, sizeof(struct ClientList));
+		Worker->Next = (struct ClientList*)calloc(1, sizeof(struct ClientList));
 		Worker->Next->Prev = Worker;
 		Worker = Worker->Next;
 	}
@@ -255,7 +255,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 		
 		if (SubStrings.StartsWith("\1ACTION ", SWorker->Msg))
 		{
-			char *NewMsg = calloc(strlen(SWorker->Msg) + 1, 1);
+			char *NewMsg = (char*)calloc(strlen(SWorker->Msg) + 1, 1);
 			
 			//Don't bother trying to understand the arithmetic here.
 			SubStrings.Copy(NewMsg, SWorker->Msg + (sizeof "\1ACTION " - 1), (strlen(SWorker->Msg) + 1) - (sizeof "\1ACTION " - 1));
@@ -287,7 +287,7 @@ static void Server_SendChannelNamesList(const struct ChannelList *const Channel,
 {
 	char OutBuf[2048];
 	unsigned Ticker = 1;
-	struct UserList *Worker = Channel->UserList;
+	struct _UserList *Worker = Channel->UserList;
 	
 	//Make basic formatting.
 SendBegin:

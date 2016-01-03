@@ -17,19 +17,21 @@
 
 //Structures
 
+struct _UserList
+{ 
+	char Nick[64]; //The nick.
+	unsigned char Modes; //Modes on the user, such as +o or +v.
+	struct _UserList *Next, *Prev;
+};
+
 struct ChannelList
 { //Holds channels and recursively, a list of users for each channel.
 	char Channel[256]; //Name of the channel.
 	char Topic[1024]; //Current topic of the channel.
 	char WhoSetTopic[256]; //Who set it. In the form of nick!ident@mask usually.
 	unsigned WhenSetTopic; //When the topic was set, in UNIX time.
-	
-	struct UserList
-	{ //List of users and whatnot.
-		char Nick[64]; //The nick.
-		unsigned char Modes; //Modes on the user, such as +o or +v.
-		struct UserList *Next, *Prev;
-	} *UserList;
+	struct _UserList *UserList; //List of users and whatnot.
+
 	
 	struct ChannelList *Next, *Prev;
 };
@@ -40,9 +42,9 @@ bool State_DelChannel(const char *const Channel);
 struct ChannelList *State_AddChannel(const char *const Channel);
 void State_ShutdownChannelList(void);
 bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel);
-struct UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel);
+struct _UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel);
 struct ChannelList *State_LookupChannel(const char *const ChannelName);
-struct UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel);
+struct _UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel);
 char State_UserModes_Get_Mode2Symbol(const unsigned char Modes);
 unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol);
 unsigned char State_UserModes_Get_Letter2Mode(char Letter);
