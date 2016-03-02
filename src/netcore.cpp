@@ -106,11 +106,13 @@ bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
 
 		TotalTransferred += Transferred;
 	} while (WriteSize > TotalTransferred);
-
+	
+#ifdef DEBUG
 	if (Descriptor == IRCDescriptor)
 	{
 		puts(static_cast<const char*>(InMsg));
 	}
+#endif
 	
 	return true;
 }
