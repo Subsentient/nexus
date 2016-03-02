@@ -1,6 +1,6 @@
-CXXFLAGS = -std=c++11 -pedantic -Wall -g -O0
+CXXFLAGS = -std=gnu++03 -pedantic -Wall -g -O0 -fno-exceptions -fno-rtti
 OUTFILE = ../NEXUS
-OBJECTS = config.cpp netcore.cpp irc.cpp state.cpp server.cpp nexus.cpp scrollback.cpp ignore.cpp
+OBJECTS = config.o netcore.o irc.o state.o server.o nexus.o scrollback.o ignore.o
 
 ifeq ($(OS),WIN)
 	CXXFLAGS += -lws2_32 -DWIN
@@ -13,7 +13,17 @@ ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all
 endif
 	$(MAKE) -C substrings static
-	$(CXX) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(CXXFLAGS)
+	$(CXX) config.cpp -c $(CXXFLAGS)
+	$(CXX) netcore.cpp -c $(CXXFLAGS)
+	$(CXX) irc.cpp -c $(CXXFLAGS)
+	$(CXX) state.cpp -c $(CXXFLAGS)
+	$(CXX) server.cpp -c $(CXXFLAGS)
+	$(CXX) nexus.cpp -c $(CXXFLAGS)
+	$(CXX) scrollback.cpp -c $(CXXFLAGS)
+	$(CXX) ignore.cpp -c $(CXXFLAGS)
+	$(CC) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(LDFLAGS)
+
+
 clean:
 	$(MAKE) -C substrings clean
 	rm -f *.o *.gch
