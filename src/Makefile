@@ -8,6 +8,10 @@ ifeq ($(OS),WIN)
 	OBJECTS += ../win32/win.o
 endif
 
+ifeq ($(DEBUG),1)
+	CXXFLAGS += -DDEBUG
+endif
+
 all:
 ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all

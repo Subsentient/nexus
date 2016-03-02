@@ -5,11 +5,12 @@
 #ifndef __NETCORE_HEADER__
 #define __NETCORE_HEADER__
 
-#include <stdbool.h>
-
 //Structures
-
+#ifdef DEBUG
 #define Net_Write(a, b, c) 		printf("Net_Write >> %s:%d\n", __FILE__, __LINE__), Net_Write_(a, b, c)
+#else
+#define Net_Write Net_Write_
+#endif
 
 //Globals
 extern int ServerDescriptor, IRCDescriptor;
