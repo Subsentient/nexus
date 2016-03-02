@@ -2,7 +2,6 @@
 
 /**This file is responsible for networking for clients that connect to **us**.**/
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

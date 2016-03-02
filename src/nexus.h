@@ -11,7 +11,6 @@
 #define Exit exit
 #endif //DEBUG
 
-#include <stdbool.h>
 #include <stddef.h>
 #include "server.h"
 

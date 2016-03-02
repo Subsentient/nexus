@@ -2,7 +2,6 @@
 
 /**This file controls ignored users and whatnot.**/
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
