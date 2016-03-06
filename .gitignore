@@ -3,4 +3,9 @@ src/*.gch
 src/substrings/libsubstrings.*
 src/substrings/*.o
 src/substrings/*.gch
+src/libcpsl/*.o
+src/libcpsl/*.a
+src/libcpsl/*.gch
+src/libcpsl/tests/*.o
+src/libcpsl/tests/bin/*
 NEXUS

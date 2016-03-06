@@ -17,6 +17,7 @@ ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all
 endif
 	$(MAKE) -C substrings static
+	$(MAKE) -C libcpsl all test
 	$(CXX) config.cpp -c $(CXXFLAGS)
 	$(CXX) netcore.cpp -c $(CXXFLAGS)
 	$(CXX) irc.cpp -c $(CXXFLAGS)
@@ -25,9 +26,10 @@ endif
 	$(CXX) nexus.cpp -c $(CXXFLAGS)
 	$(CXX) scrollback.cpp -c $(CXXFLAGS)
 	$(CXX) ignore.cpp -c $(CXXFLAGS)
-	$(CC) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(LDFLAGS)
+	$(CC) $(OBJECTS) substrings/libsubstrings.a libcpsl/libcpsl.a -o $(OUTFILE) $(LDFLAGS)
 
 
 clean:
 	$(MAKE) -C substrings clean
+	$(MAKE) -C libcpsl clean
 	rm -f *.o *.gch
