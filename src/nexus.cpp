@@ -119,7 +119,13 @@ void MasterLoop(void)
 			{ //Client wants something.
 				struct ClientList *Client = Server_ClientList_Lookup(Inc);
 				
-				if (!Client) continue; //BS client
+				if (!Client)
+				{
+					//Kill their connection and remove them from the descriptor set.
+					Net_Close(Inc);
+					NEXUS_DescriptorSet_Del(Inc);
+					continue; //BS client
+				}
 				
 				char ClientBuf[2048];
 				
