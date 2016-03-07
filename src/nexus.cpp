@@ -13,6 +13,7 @@
 #endif //WIN
 
 #include "substrings/substrings.h"
+#include "libcpsl/libcpsl.h"
 #include "netcore.h"
 #include "nexus.h"
 #include "config.h"
@@ -171,6 +172,10 @@ bool NEXUS_DescriptorSet_Del(const int Descriptor)
 //Functions;
 int main(int argc, char **argv)
 { ///And as I once cleansed the world with fire, I will destroy you, and your puny project! -Dr. Reed
+	
+	//Fire up libcpsl, the storage library we use.
+	CPSL_Configure(malloc, free, realloc);
+	
 	//Print version and whatnot.
 
 	//Turn off buffering. We hates it! -Gollum
@@ -489,7 +494,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			if (*Search != '#') goto ForwardVerbatim;
 			
 			//We need to make all text reach the other client.
-			for (; Worker; Worker = Worker->Next)
+			for (; Worker; Worker = CPSL_LNEXT(Worker))
 			{
 				if (Worker == Client) continue; //Don't send to the one who just sent this.
 				
@@ -862,7 +867,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			if (!strcmp(NickTest, IRCConfig.Nick)) //This is our nick.
 			{ //Since it's our nick, we gotta alter it so that the IP and ident match the client's.
-				for (; Worker; Worker = Worker->Next)
+				for (; Worker; Worker = CPSL_LNEXT(Worker))
 				{ //Rebuild so it matches their ident and IP.
 					if (IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, Worker))
 					{ //If we fail to alter the origin just don't send it.
@@ -1202,7 +1207,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		for (; ChannelWorker; ChannelWorker = ChannelWorker->Next, ++ChannelCount);
 		
 		//Count clients.
-		for (; ClientWorker; ClientWorker = ClientWorker->Next, ++ClientCount);
+		for (; ClientWorker; ClientWorker = CPSL_LNEXT(ClientWorker), ++ClientCount);
 		
 		//List all channels we are in.
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of channels NEXUS is in:\r\n",
@@ -1221,7 +1226,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 				IRCConfig.Nick);
 		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		
-		for (ClientWorker = ClientListCore, Inc = 1; ClientWorker != NULL; ClientWorker = ClientWorker->Next, ++Inc)
+		for (ClientWorker = ClientListCore, Inc = 1; ClientWorker != NULL; ClientWorker = CPSL_LNEXT(ClientWorker), ++Inc)
 		{
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u]%s Ident: \"%s\" IP: \"%s\"\r\n",
 					IRCConfig.Nick, Inc, ClientCount, ClientWorker == Client ? " (YOU)" : "",

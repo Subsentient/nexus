@@ -6,6 +6,9 @@
 #include "config.h"
 #include "nexus.h"
 
+#include "libcpsl/libcpsl.h"
+#include "substrings/substrings.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,17 +22,11 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 	
 	if (!Worker)
 	{
-		Worker = ScrollbackCore = (struct ScrollbackList*)calloc(1, sizeof(struct ScrollbackList));
+		Worker = ScrollbackCore = (struct ScrollbackList*)CPSL_List_NewList(sizeof(struct ScrollbackList));
 	}
-	else
-	{
-		for (; Worker->Next; Worker = Worker->Next); //Skip to a free Next.
-		
-		Worker->Next = (struct ScrollbackList*)calloc(1, sizeof(struct ScrollbackList));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
-	}
+	else Worker = (struct ScrollbackList*)CPSL_List_AddNode((struct CPSL_List*)ScrollbackCore);
 	
+	memset((struct CPSL_List*)Worker + 1, 0, sizeof(struct ScrollbackList) - sizeof(struct CPSL_List));
 		
 	Worker->Msg = (const char*)malloc(strlen(Msg) + 1);
 	strcpy((char*)Worker->Msg, Msg); //These pointers are constant but it's safe to cast them to mutable.
@@ -60,43 +57,24 @@ void Scrollback_DelMsg(struct ScrollbackList *ToDel)
 	if (ToDel->Target) free((void*)ToDel->Target);
 	
 	//Then we can remove it from the list.
-	if (ToDel == ScrollbackCore)
-	{
-		if (ToDel->Next)
-		{
-			ScrollbackCore = ToDel->Next;
-			ScrollbackCore->Prev = NULL;
-			free(ToDel);
-		}
-		else
-		{
-			ScrollbackCore = NULL;
-			free(ToDel);
-		}
-	}
-	else
-	{
-		if (ToDel->Next) ToDel->Next->Prev = ToDel->Prev;
-		ToDel->Prev->Next = ToDel->Next;
-		free(ToDel);
-	}
+	
+	ScrollbackCore = (struct ScrollbackList*)CPSL_List_DeleteNode((struct CPSL_List*)ToDel);
 }
 
 void Scrollback_Shutdown(void)
 {
-	struct ScrollbackList *Worker = ScrollbackCore, *Next;
+	struct ScrollbackList *Worker = ScrollbackCore;
 	
-	for (; Worker; Worker = Next)
+	for (; Worker; Worker = CPSL_LNEXT(Worker))
 	{
 		//Free subobjects.
 		free((void*)Worker->Msg);
 		free((void*)Worker->Origin);
 		if (Worker->Target) free((void*)Worker->Target);
 		
-		//Then we can nuke the rest.
-		Next = Worker->Next;
-		free(Worker);
 	}
+	
+	CPSL_List_DestroyList((struct CPSL_List*)ScrollbackCore);
 	
 	ScrollbackCore = NULL;
 }
@@ -107,7 +85,7 @@ void Scrollback_Reap(void)
 	const time_t TimeCompare = time(NULL);
 	
 SBLoop:
-	for (struct ScrollbackList *SBWorker = ScrollbackCore; SBWorker; SBWorker = SBWorker->Next)
+	for (struct ScrollbackList *SBWorker = ScrollbackCore; SBWorker; SBWorker = CPSL_LNEXT(SBWorker))
 	{
 		if (SBWorker->Time + NEXUSConfig.ScrollbackKeepTime < TimeCompare)
 		{ //Expired. Reap it.

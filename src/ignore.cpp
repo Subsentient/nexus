@@ -15,7 +15,13 @@ static bool Ignore_Del(struct IgnoreList *Delete);
 
 bool Ignore_Add(const char *Message, const unsigned WhatToBlock)
 { //Success if the broken down nick/ident/mask makes sense and can be added.
+
 	struct IgnoreList *Worker = IgnoreCore;
+	if (!IgnoreCore)
+	{
+		IgnoreCore = Worker = (struct IgnoreList*)CPSL_List_NewList(sizeof(struct IgnoreList));
+	}
+	else Worker = (struct IgnoreList*)CPSL_List_AddNode(&IgnoreCore->ListInfo);
 	
 	char Nick[sizeof ((struct IgnoreList*)0)->Nick];
 	char Ident[sizeof ((struct IgnoreList*)0)->Ident];
@@ -24,19 +30,6 @@ bool Ignore_Add(const char *Message, const unsigned WhatToBlock)
 	if (!IRC_BreakdownNick(Message, Nick, Ident, Mask))
 	{ //Bad or corrupted input.
 		return false;
-	}
-	
-	if (!Worker)
-	{
-		IgnoreCore = Worker = (struct IgnoreList*)calloc(1, sizeof(struct IgnoreList));
-	}
-	else
-	{
-		while (Worker->Next) Worker = Worker->Next;
-		
-		Worker->Next = (struct IgnoreList*)calloc(1, sizeof(struct IgnoreList));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
 	}
 	
 	
@@ -62,13 +55,15 @@ bool Ignore_Check(const char *Message, const unsigned WhatToCheck)
 { //See if a message originates/user is blocked.
 	struct IgnoreList *Worker = IgnoreCore;
 	
+	if (!IgnoreCore) return false;
+	
 	char CheckNick[sizeof ((struct IgnoreList*)0)->Nick];
 	char CheckIdent[sizeof ((struct IgnoreList*)0)->Ident];
 	char CheckMask[sizeof ((struct IgnoreList*)0)->Mask];
 	
 	IRC_BreakdownNick(Message, CheckNick, CheckIdent, CheckMask);
 	
-	for (; Worker; Worker = Worker->Next)
+	for (; Worker; Worker = CPSL_LNEXT(Worker))
 	{
 		if ((WhatToCheck & Worker->WhatToBlock) == WhatToCheck &&
 			(*Worker->Nick == '*' || SubStrings.Compare(Worker->Nick, CheckNick)) &&
@@ -92,7 +87,7 @@ bool Ignore_Modify(const char *const VHost, const bool Adding, const unsigned Wh
 	struct IgnoreList *Worker = IgnoreCore;
 	
 	
-	for (; Worker; Worker = Worker->Next)
+	for (; Worker; Worker = CPSL_LNEXT(Worker))
 	{
 		if (SubStrings.Compare(Nick, Worker->Nick) &&
 			SubStrings.Compare(Ident, Worker->Ident) &&
@@ -129,39 +124,22 @@ bool Ignore_Modify(const char *const VHost, const bool Adding, const unsigned Wh
 
 void Ignore_Shutdown(void)
 {
-	struct IgnoreList *Worker = IgnoreCore, *Next = NULL;
+	if (!IgnoreCore) return;
 	
-	for (; Worker; Worker = Next)
-	{
-		Next = Worker->Next;
-		free(Worker);
-	}
+	CPSL_List_DestroyList(&IgnoreCore->ListInfo);
 	IgnoreCore = NULL;
 }
 
 static bool Ignore_Del(struct IgnoreList *Delete)
 {
+	if (!Delete) return false;
 	
-	if (Delete == IgnoreCore)
-	{
-		if (IgnoreCore->Next)
-		{
-			IgnoreCore = IgnoreCore->Next;
-			IgnoreCore->Prev = NULL;
-			free(Delete);
-		}
-		else
-		{
-			IgnoreCore = NULL;
-			free(Delete);
-		}
-	}
-	else
-	{
-		Delete->Prev->Next = Delete->Next;
-		if (Delete->Next) Delete->Next->Prev = Delete->Prev;
-		free(Delete);
-	}
+	if (!IgnoreCore) return false;	
+	
+	struct IgnoreList *NewHead = (struct IgnoreList*)CPSL_List_DeleteNode(&Delete->ListInfo);
+	
+	if (!NewHead) IgnoreCore = NULL;
+	else IgnoreCore = NewHead;
 	
 	return true;
 }

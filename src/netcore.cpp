@@ -34,6 +34,9 @@
 #include "server.h"
 #include "nexus.h"
 
+#include "substrings/substrings.h"
+#include "libcpsl/libcpsl.h"
+
 /*Globals*/
 int ServerDescriptor, IRCDescriptor;
 static int SocketFamily;
@@ -212,7 +215,7 @@ void Net_ShutdownServer(void)
 	struct ClientList *Worker = ClientListCore;
 	
 	//Close all connections to clients.
-	for (; Worker; Worker = Worker->Next)
+	for (; Worker; Worker = CPSL_LNEXT(Worker))
 	{
 		Net_Close(Worker->Descriptor);
 	}
