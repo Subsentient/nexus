@@ -35,6 +35,14 @@ struct CPSL_List *CPSL_List_NewList(const unsigned PerElementSize)
 	return Core;
 }
 
+size_t CPSL_List_CountNodes(register struct CPSL_List *AnyElement)
+{
+	size_t Counter = 0;
+	
+	for (; AnyElement; AnyElement = AnyElement->Next, ++Counter);
+	
+	return Counter;
+}
 
 CPSL_Bool CPSL_List_DestroyList(struct CPSL_List *ListHead)
 {
@@ -108,8 +116,9 @@ struct CPSL_List *CPSL_List_DeleteNode(struct CPSL_List *NodeToDelete)
 			//Move the head.
 			*NodeToDelete->Head = NodeToDelete->Next;
 			NodeToDelete->Next->Prev = NULL;
+			struct CPSL_List *const NewHead = NodeToDelete->Next;
 			Alloc.free(NodeToDelete);
-			return NodeToDelete->Next; //Give them the new head.
+			return NewHead; //Give them the new head.
 		}
 
 		//Ahh, just us. So the list dies now.
