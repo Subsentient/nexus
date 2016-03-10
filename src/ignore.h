@@ -1,6 +1,6 @@
 /*NEXUS IRC session BNC, by Subsentient. This software is public domain.*/
 #include <limits.h>
-#include "libcpsl/libcpsl.h"
+
 
 #define NEXUS_IGNORE_CHANMSG (1U) //Messages in a channel
 #define NEXUS_IGNORE_PRIVMSG (1U << 1) //PMs
@@ -12,9 +12,10 @@
 //Structs
 struct IgnoreList
 {
-	struct CPSL_List ListInfo;
 	char Nick[64], Ident[64], Mask[256];
 	unsigned WhatToBlock;
+	
+	struct IgnoreList *Next, *Prev;
 };
 
 

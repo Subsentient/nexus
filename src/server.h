@@ -6,18 +6,18 @@
 #define __SERVER_HEADER__
 
 #include <stdbool.h>
-#include "libcpsl/libcpsl.h"
 
 #define NEXUS_FAKEHOST "NEXUS"
 
 //Structures
 struct ClientList
 { //Contains information about what clients are who.
-	struct CPSL_List ListInfo;
 	int Descriptor; //Network descriptor for this guy.
 	char IP[128]; //His IP address.
 	char OriginalNick[64]; //The nick they had before we told them to change it.
 	char Ident[64]; //They get to keep their ident and we will call them by it.
+	
+	struct ClientList *Next, *Prev;
 };
 
 enum ServerMessageType

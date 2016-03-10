@@ -5,16 +5,16 @@
 #define __SCROLLBACK_HEADER__
 
 #include <time.h> //For time_t
-#include "libcpsl/libcpsl.h"
 
 ///Structures.
 struct ScrollbackList
 {
-	struct CPSL_List ListInfo;
 	time_t Time; //The time the message was detected by NEXUS.
 	const char *Msg; //The message data. Dynamically allocated on the heap.
 	const char *Origin; //Where the message is from. Either a full mask or a channel. Dynamically allocated..
 	const char *Target; //Who it was intended for, either us or a channel. Set to NULL to indicate a PM. Dynamically allocated.
+	
+	struct ScrollbackList *Next, *Prev;
 };
 
 ///Globals.

@@ -20,7 +20,6 @@
 #include "irc.h"
 
 #include "substrings/substrings.h"
-#include "libcpsl/libcpsl.h"
 
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
@@ -38,7 +37,7 @@ struct ClientList *Server_ClientList_Lookup(const int Descriptor)
 {
 	struct ClientList *Worker = ClientListCore;
 	
-	for (; Worker; Worker = CPSL_LNEXT(Worker))
+	for (; Worker; Worker = Worker->Next)
 	{
 		if (Worker->Descriptor == Descriptor)
 		{
@@ -51,25 +50,27 @@ struct ClientList *Server_ClientList_Lookup(const int Descriptor)
 
 struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct)
 {
-	struct ClientList *Worker = ClientListCore;
+	struct ClientList *Worker = ClientListCore, *TempNext, *TempPrev;
 	
 	if (!ClientListCore)
 	{
-		Worker = ClientListCore = (struct ClientList*)CPSL_List_NewList(sizeof(struct ClientList));
+		Worker = ClientListCore = (struct ClientList*)calloc(1, sizeof(struct ClientList)); //use calloc to zero it out
 	}
 	else
 	{
-		Worker = (struct ClientList*)CPSL_List_AddNode((struct CPSL_List*)ClientListCore);
+		while (Worker->Next) Worker = Worker->Next;
+		Worker->Next = (struct ClientList*)calloc(1, sizeof(struct ClientList));
+		Worker->Next->Prev = Worker;
+		Worker = Worker->Next;
 	}
 	
-	memset((struct CPSL_List*)Worker + 1, 0, sizeof(struct ClientList) - sizeof(struct CPSL_List));
-
-	
-	struct CPSL_List TempListData = Worker->ListInfo;
+	TempNext = Worker->Next;
+	TempPrev = Worker->Prev;
 	
 	*Worker = *InStruct;
 	
-	Worker->ListInfo = TempListData;
+	Worker->Next = TempNext;
+	Worker->Prev = TempPrev;
 	
 	return Worker;
 }
@@ -77,7 +78,13 @@ struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct
 
 void Server_ClientList_Shutdown(void)
 {
-	CPSL_List_DestroyList((struct CPSL_List*)ClientListCore);
+	struct ClientList *Worker = ClientListCore, *Next;
+
+	for (; Worker; Worker = Next)
+	{
+		Next = Worker->Next;
+		free(Worker);
+	}
 	
 	ClientListCore = NULL;
 	PreviousClient = NULL;
@@ -90,7 +97,7 @@ bool Server_ClientList_Del(const int Descriptor)
 	
 	if (!ClientListCore) return false;
 	
-	for (; Worker; Worker = CPSL_LNEXT(Worker))
+	for (; Worker; Worker = Worker->Next)
 	{
 		if (Worker->Descriptor == Descriptor)
 		{ //Match.
@@ -103,7 +110,28 @@ bool Server_ClientList_Del(const int Descriptor)
 			{
 				CurrentClient = (struct ClientList*)-1;
 			}
-			ClientListCore = (struct ClientList*)CPSL_List_DeleteNode((struct CPSL_List*)Worker);
+			
+			if (Worker == ClientListCore)
+			{
+				if (Worker->Next)
+				{ //We're the first one but there are others ahead of us.
+					ClientListCore = Worker->Next;
+					ClientListCore->Prev = NULL;
+					free(Worker);
+				}
+				else
+				{ //Just us.
+					free(Worker);
+					ClientListCore = NULL;
+				}
+			}
+			else
+			{
+				Worker->Prev->Next = Worker->Next;
+				if (Worker->Next) Worker->Next->Prev = Worker->Prev;
+				free(Worker);
+			}
+			
 			return true;
 		}
 	}
@@ -117,7 +145,7 @@ bool Server_ForwardToAll(const char *const InStream)
 	
 	if (!Worker) return false;
 	
-	for (; Worker; Worker = CPSL_LNEXT(Worker))
+	for (; Worker; Worker = Worker->Next)
 	{
 		Net_Write(Worker->Descriptor, InStream, strlen(InStream));
 	}
@@ -143,7 +171,7 @@ void Server_SendQuit(const int Descriptor, const char *const Reason)
 	struct ClientList *Worker = ClientListCore;
 	char OutBuf[2048];
 	
-	for (; Worker; Worker = CPSL_LNEXT(Worker))
+	for (; Worker; Worker = Worker->Next)
 	{
 		//If not on "everyone" mode we check if the descriptor matches.
 		if (Descriptor != -1 && Descriptor != Worker->Descriptor) continue; 
@@ -182,7 +210,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	
 	
 	//Count clients for our next cool little trick.
-	for (CWorker = ClientListCore; CWorker; CWorker = CPSL_LNEXT(CWorker)) ++ClientCount;
+	for (CWorker = ClientListCore; CWorker; CWorker = CWorker->Next) ++ClientCount;
 	
 	/**Send a MOTD.**/
 	
@@ -211,7 +239,7 @@ void Server_SendIRCWelcome(const int ClientDescriptor)
 	
 	snprintf(SelfOrigin, sizeof SelfOrigin, "%s!%s@%s", IRCConfig.Nick, Client->Ident, Client->IP);
 	
-	for (; SWorker; SWorker = CPSL_LNEXT(SWorker))
+	for (; SWorker; SWorker = SWorker->Next)
 	{ //Loop through sending the scrollback.
 		struct tm *TimeStruct = localtime(&SWorker->Time);
 		char TimeBuf[128];
