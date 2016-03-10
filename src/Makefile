@@ -1,4 +1,4 @@
-CXXFLAGS = -std=gnu++03 -pedantic -Wall -g -O0 -fno-exceptions -fno-rtti
+CXXFLAGS = -std=gnu++03 -pedantic -Wall -g -O0
 OUTFILE = ../NEXUS
 OBJECTS = config.o netcore.o irc.o state.o server.o nexus.o scrollback.o ignore.o
 
@@ -25,7 +25,7 @@ endif
 	$(CXX) nexus.cpp -c $(CXXFLAGS)
 	$(CXX) scrollback.cpp -c $(CXXFLAGS)
 	$(CXX) ignore.cpp -c $(CXXFLAGS)
-	$(CC) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(LDFLAGS)
+	$(CXX) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(LDFLAGS)
 
 
 clean:
