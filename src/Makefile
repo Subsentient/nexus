@@ -17,7 +17,7 @@ ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all
 endif
 	$(MAKE) -C substrings static
-	$(MAKE) -C libcpsl
+	$(MAKE) -C libcpsl all test
 	$(CXX) config.cpp -c $(CXXFLAGS)
 	$(CXX) netcore.cpp -c $(CXXFLAGS)
 	$(CXX) irc.cpp -c $(CXXFLAGS)
