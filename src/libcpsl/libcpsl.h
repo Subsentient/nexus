@@ -90,7 +90,7 @@ struct CPSL_List *CPSL_List_AddNode(struct CPSL_List *AnyListElement);
  * It will delete the entire list if you are deleting the last element. You're warned.
  **/
 struct CPSL_List *CPSL_List_DeleteNode(struct CPSL_List *NodeToDelete);
-size_t CPSL_List_CountNodes(struct CPSL_List *AnyElement);
+
 
 /**Globals**/
 
