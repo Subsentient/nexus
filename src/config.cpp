@@ -6,6 +6,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+
+#include <new>
+
 #include "config.h"
 #include "nexus.h"
 #define CONFIG_DIR ".nexus"
@@ -51,7 +54,7 @@ bool Config_ReadConfig(void)
 	}
 	
 	//Allocate space.
-	ConfigData = new char[FileStat.st_size + 1];
+	ConfigData = new (std::nothrow) char[FileStat.st_size + 1];
 	
 	//Read in the config file.
 	fread(ConfigData, 1, FileStat.st_size, FD);

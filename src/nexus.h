@@ -22,27 +22,4 @@ void NEXUS_IRC2NEXUS(const char *Message);
 void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client);
 void NEXUS_DescriptorSet_Add(const int Descriptor);
 bool NEXUS_DescriptorSet_Del(const int Descriptor);
-
-//We need operator new and operator delete
-inline void *operator new(size_t Size)
-{
-	void *malloc(size_t);
-	return malloc(Size);
-}
-
-inline void *operator new[](size_t Size)
-{
-	return operator new(Size);
-}
-
-inline void operator delete(void *Ptr)
-{
-	void free(void*);
-	free(Ptr);
-}
-
-inline void operator delete[](void *Ptr)
-{
-	operator delete(Ptr);
-}
 #endif //__NEXUS_HEADER__

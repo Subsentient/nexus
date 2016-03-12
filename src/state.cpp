@@ -7,223 +7,61 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <list>
+
 #include "substrings/substrings.h"
 #include "state.h"
 #include "nexus.h"
 
 //Globals
-struct ChannelList *ChannelListCore;
+std::map<std::string, ChannelList> ChannelListCore;
 
 //Prototypes
-static void State_DelAllChannelUsers(struct ChannelList *Channel);
 
 //Functions
-struct ChannelList *State_AddChannel(const char *const Channel)
+ChannelList *State_AddChannel(const char *const Channel)
 {
-	struct ChannelList *Worker = ChannelListCore;
+	ChannelList NewChan(Channel);
+	ChannelListCore[Channel] = NewChan;
+	return &ChannelListCore[Channel];
+}
+
+class ChannelList *State_LookupChannel(const char *const ChannelName)
+{
+	std::map<std::string, class ChannelList>::iterator Iter = ChannelListCore.begin();
 	
-	if (!ChannelListCore)
-	{ //We're the first.
-		Worker = ChannelListCore = (struct ChannelList*)calloc(1, sizeof(struct ChannelList));
-	}
-	else
-	{ //Not the first.
-		
-		for (; Worker; Worker = Worker->Next)
-		{ //Check for duplicates.
-			if (!strcmp(Worker->Channel, Channel))
-			{
-				return Worker;
-			}
+	for (; Iter != ChannelListCore.end(); ++Iter)
+	{
+		if (SubStrings.CaseCompare(Iter->first.c_str(), ChannelName))
+		{ //As a C guy going to C++, some of this stuff like std::pair gives me a headache. Nonetheless, it's somewhat useful.
+			return &Iter->second;
 		}
-		
-		//Skip to a free Next.
-		for (Worker = ChannelListCore; Worker->Next; Worker = Worker->Next);
-		
-		Worker->Next = (struct ChannelList*)calloc(1, sizeof(struct ChannelList));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
 	}
 	
-	//Copy in that channel name.
-	strncpy(Worker->Channel, Channel, sizeof Worker->Channel - 1);
-	Worker->Channel[sizeof Worker->Channel - 1] = '\0';
-	
-	return Worker;
+	return NULL;
 }
 
 bool State_DelChannel(const char *const Channel)
 {
-	struct ChannelList *Worker = ChannelListCore;
+	return ChannelListCore.erase(Channel);
+}
+
+
+struct UserStruct *ChannelList::GetUser(const char *const Nick) const
+{
+	if (this->UserList.count(Nick) == 0) return NULL;
 	
-	for (; Worker; Worker = Worker->Next)
-	{
-		if (!strcmp(Channel, Worker->Channel))
-		{
-			//Delete all users first.
-			State_DelAllChannelUsers(Worker);
-			
-			//Then delete the channel.
-			if (Worker == ChannelListCore)
-			{
-				if (Worker->Next)
-				{
-					ChannelListCore = Worker->Next;
-					free(Worker);
-				}
-				else
-				{
-					ChannelListCore = NULL;
-					free(Worker);
-				}
-			}
-			else
-			{
-				Worker->Prev->Next = Worker->Next;
-				if (Worker->Next) Worker->Next->Prev = Worker->Prev;
-				free(Worker);
-			}
-			return true;
-		}
-	}
-	return false;
+	return &const_cast<ChannelList*>(this)->UserList[Nick];
+}
+
+void ChannelList::WipeUsers(void)
+{
+	this->UserList.clear();
 }
 
 void State_ShutdownChannelList(void)
 {
-	struct ChannelList *Worker = ChannelListCore, *Next;
-	
-	for (; Worker; Worker = Next)
-	{
-		//Get rid of any users they have first.
-		State_DelAllChannelUsers(Worker);
-		
-		Next = Worker->Next;
-		free(Worker);
-	}
-}
-
-struct _UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel)
-{
-	struct _UserList *Worker = Channel->UserList;
-	
-	if (!Worker)
-	{
-		Worker = Channel->UserList = (struct _UserList*)calloc(1, sizeof(struct _UserList));
-	}
-	else
-	{
-		for (; Worker; Worker = Worker->Next)
-		{ //Check for dupes.
-			if (!strcmp(Worker->Nick, Nick))
-			{
-				Worker->Modes = Modes; //Might as well update it.
-				return Worker;
-			}
-		}
-		
-		//Skip to a NULL Next.
-		for (Worker = Channel->UserList; Worker->Next; Worker = Worker->Next);
-		
-		Worker->Next = (struct _UserList*)calloc(1, sizeof(struct _UserList));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
-	}
-	
-	//Copy in the nickname.
-	strncpy(Worker->Nick, Nick, sizeof Worker->Nick - 1);
-	Worker->Nick[sizeof Worker->Nick - 1] = '\0';
-	
-	//Then set the user's modes.
-	Worker->Modes = Modes;
-	
-	return Worker;
-}
-
-struct ChannelList *State_LookupChannel(const char *const ChannelName)
-{
-	struct ChannelList *Worker = ChannelListCore;
-	char Compare[2][sizeof ((struct ChannelList*)0)->Channel];
-
-	//Copy in and lower case our argument.
-	SubStrings.Copy(Compare[0], ChannelName, sizeof Compare[0]);
-	SubStrings.ASCII.LowerS(Compare[0]);
-	
-	for (; Worker; Worker = Worker->Next)
-	{
-		
-		//Copy in and lower case Worker->Channel
-		SubStrings.Copy(Compare[1], Worker->Channel, sizeof Compare[1]);
-		SubStrings.ASCII.LowerS(Compare[1]);
-		
-		if (!strcmp(Compare[0], Compare[1]))
-		{
-			return Worker;
-		}
-	}
-	
-	return NULL;
-}
-
-struct _UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel)
-{ //Looks up the user structure for the specified nick in the specified channel.
-	struct _UserList *Worker = Channel->UserList;
-	
-	for (; Worker; Worker = Worker->Next)
-	{
-		if (!strcmp(Nick, Worker->Nick))
-		{
-			return Worker;
-		}
-	}
-	
-	return NULL;
-}
-
-
-bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel)
-{
-	struct _UserList *Worker = Channel->UserList;
-	
-	for (; Worker; Worker = Worker->Next)
-	{
-		if (!strcmp(Nick, Worker->Nick))
-		{
-			if (Worker == Channel->UserList)
-			{
-				if (Worker->Next)
-				{
-					Channel->UserList = Worker->Next;
-					free(Worker);
-				}
-				else
-				{
-					Channel->UserList = NULL;
-					free(Worker);
-				}
-			}
-			else
-			{
-				Worker->Prev->Next = Worker->Next;
-				if (Worker->Next) Worker->Next->Prev = Worker->Prev;
-				free(Worker);
-			}
-			
-			return true;
-		}
-	}
-	return false;
-}
-
-static void State_DelAllChannelUsers(struct ChannelList *Channel)
-{
-	struct _UserList *Worker = Channel->UserList, *Next;
-	
-	for (; Worker; Worker = Next)
-	{
-		Next = Worker->Next;
-		free(Worker);
-	}
+	ChannelListCore.clear();
 }
 
 unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol)
@@ -278,3 +116,68 @@ unsigned char State_UserModes_Get_Letter2Mode(char Letter)
 			return 0;
 	}
 }
+
+bool ChannelList::AddUser(const char *const Nick, const unsigned char Modes)
+{
+	if (this->UserList.count(Nick) != 0) return false;
+	
+	struct UserStruct NewUser;
+	NewUser.Nick = Nick;
+	NewUser.Modes = Modes;
+	
+	this->UserList[Nick] = NewUser;
+	
+	return true;
+}
+
+bool ChannelList::RenameUser(const char *const OldNick, const char *const NewNick)
+{
+	struct UserStruct *User = this->GetUser(OldNick);
+	
+	if (!User) return false;
+	
+	const unsigned Modes = User->Modes;
+	
+	this->DelUser(OldNick);
+	this->AddUser(NewNick, Modes);
+	
+	return true;
+}
+
+bool ChannelList::DelUser(const char *const Nick)
+{
+	if (this->UserList.count(Nick) == 0) return false;
+	
+	return this->UserList.erase(Nick);
+}
+
+void ChannelList::SetTopic(const char *InTopic)
+{
+	if (!InTopic)
+	{
+		this->Topic.clear();
+		return;
+	}
+	
+	this->Topic = InTopic;
+}
+
+void ChannelList::SetWhoSetTopic(const char *In)
+{
+	if (!In)
+	{
+		this->WhoSetTopic.clear();
+		return;
+	}
+	
+	this->WhoSetTopic = In;
+}
+
+void ChannelList::SetWhenSetTopic(const unsigned WhenSetTopic)
+{
+	this->WhenSetTopic = WhenSetTopic;
+}
+	
+
+
+

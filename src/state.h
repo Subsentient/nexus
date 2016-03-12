@@ -6,7 +6,9 @@
 #define __STATE_HEADER__
 
 #include <stdbool.h>
-
+#include <list>
+#include <string>
+#include <map>
 //Flags.
 #define F_IRCMODE_VOICE 0x1
 #define F_IRCMODE_HALFOP 0x2
@@ -17,39 +19,68 @@
 
 //Structures
 
-struct _UserList
+struct UserStruct
 { 
-	char Nick[64]; //The nick.
+	std::string Nick; //The nick.
 	unsigned char Modes; //Modes on the user, such as +o or +v.
-	struct _UserList *Next, *Prev;
 };
 
-struct ChannelList
+class ChannelList
 { //Holds channels and recursively, a list of users for each channel.
-	char Channel[256]; //Name of the channel.
-	char Topic[1024]; //Current topic of the channel.
-	char WhoSetTopic[256]; //Who set it. In the form of nick!ident@mask usually.
+private:
+	std::string Channel; //Name of the channel.
+	std::string Topic; //Current topic of the channel.
+	std::string WhoSetTopic; //Who set it. In the form of nick!ident@mask usually.
 	unsigned WhenSetTopic; //When the topic was set, in UNIX time.
-	struct _UserList *UserList; //List of users and whatnot.
-
+	std::map<std::string, struct UserStruct> UserList; //List of users and whatnot.
+public:
+	inline ChannelList(std::string InChannel = "", std::string InTopic = "", std::string InWhoSetTopic = "", const unsigned WhenSetTopic = 0)
+		: Channel(InChannel), Topic(InTopic), WhoSetTopic(InWhoSetTopic), WhenSetTopic(0) {}
+	inline bool operator==(const ChannelList &In) const
+	{
+		return In.Channel == this->Channel;
+	}
+	bool AddUser(const char *Nick, const unsigned char Modes);
+	bool DelUser(const char *Nick);
+	struct UserStruct *GetUser(const char *const Nick) const;
+	bool RenameUser(const char *const OldNick, const char *const NewNick);
+	void WipeUsers(void);
 	
-	struct ChannelList *Next, *Prev;
+	inline const char *GetTopic(void) const
+	{
+		return this->Topic.c_str();
+	}
+	inline const char *GetWhoSetTopic(void) const
+	{
+		return this->WhoSetTopic.c_str();
+	}
+	inline const char *GetChannelName(void) const
+	{
+		return this->Channel.c_str();
+	}
+	inline unsigned GetWhenSetTopic(void) const
+	{
+		return this->WhenSetTopic;
+	}
+	inline std::map<std::string, struct UserStruct> &GetUserList(void) const
+	{
+		return const_cast<ChannelList*>(this)->UserList;
+	}
+	void SetTopic(const char *InTopic = NULL);
+	void SetWhoSetTopic(const char *In = NULL);
+	void SetWhenSetTopic(const unsigned WhenSetTopic = 0);
 };
 
 
 //Functions
 bool State_DelChannel(const char *const Channel);
-struct ChannelList *State_AddChannel(const char *const Channel);
+class ChannelList *State_AddChannel(const char *const Channel);
 void State_ShutdownChannelList(void);
-bool State_DelUserFromChannel(const char *Nick, struct ChannelList *Channel);
-struct _UserList *State_AddUserToChannel(const char *Nick, const unsigned char Modes, struct ChannelList *Channel);
-struct ChannelList *State_LookupChannel(const char *const ChannelName);
-struct _UserList *State_GetUserInChannel(const char *Nick, struct ChannelList *Channel);
+class ChannelList *State_LookupChannel(const char *const ChannelName);
 char State_UserModes_Get_Mode2Symbol(const unsigned char Modes);
 unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol);
 unsigned char State_UserModes_Get_Letter2Mode(char Letter);
 
 //Globals
-extern struct ChannelList *ChannelListCore;
-
+extern std::map<std::string, ChannelList> ChannelListCore;
 #endif //__STATE_HEADER__

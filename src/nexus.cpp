@@ -133,8 +133,8 @@ void MasterLoop(void)
 				if (!NRR)
 				{ //he ded
 					Net_Close(Client->Descriptor);
-					Server_ClientList_Del(Client->Descriptor);
 					NEXUS_DescriptorSet_Del(Client->Descriptor);
+					Server_ClientList_Del(Client->Descriptor);
 					continue;
 				}
 				
@@ -523,7 +523,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		{ //Don't allow us to send joins for channels we are already in.
 			char *Tempstream = (char*)malloc(strlen(Message) + 1);
 			char *Worker = Tempstream + (sizeof "JOIN" - 1);
-			char Channel[sizeof ((struct ChannelList*)0)->Channel];
+			char Channel[128];
 			unsigned Inc = 0;
 			unsigned OutChannelsSize = (strlen(Message) + 1) + 1024;
 			char *OutChannels = (char*)malloc(OutChannelsSize);
@@ -674,7 +674,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			unsigned Inc = 0;
 			char NewTopic[1024];
 			char Channel[256], *Worker = strchr((char*)Message, '#');
-			struct ChannelList *ChannelStruct = NULL;
+			class ChannelList *ChannelStruct = NULL;
 			
 			if (!Worker) return; //Corrupt data.
 			
@@ -699,8 +699,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			if ((ChannelStruct = State_LookupChannel(Channel)) == NULL) return; //We aren't in that channel. Why send us a topic?
 		
 			//Copy in the new topic.
-			strncpy(ChannelStruct->Topic, NewTopic, sizeof ChannelStruct->Topic - 1);
-			ChannelStruct->Topic[sizeof ChannelStruct->Topic - 1] = '\0';
+			ChannelStruct->SetTopic(NewTopic);
 			
 			goto ForwardVerbatim;
 		}
@@ -710,7 +709,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			char *Worker = (char*)strchr(Message, '#');
 			unsigned WhenSet = 0; //When the topic was set.
 			unsigned Inc = 0;
-			struct ChannelList *ChannelStruct = NULL;
+			class ChannelList *ChannelStruct = NULL;
 			
 			//Get the channel.
 			for (; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Channel - 1; ++Inc, ++Worker)
@@ -737,11 +736,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			WhenSet = (unsigned)atoll(Worker);
 			
 			//Copy in the setter.
-			strncpy(ChannelStruct->WhoSetTopic, Setter, sizeof ChannelStruct->WhoSetTopic - 1);
-			ChannelStruct->WhoSetTopic[sizeof ChannelStruct->WhoSetTopic - 1] = '\0';
+			ChannelStruct->SetWhoSetTopic(Setter);
+			
 			
 			//Copy in the time it was set.
-			ChannelStruct->WhenSetTopic = WhenSet;
+			ChannelStruct->SetWhenSetTopic(WhenSet);
 			
 			//Now send it to everyone.
 			goto ForwardVerbatim;
@@ -753,7 +752,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			const char *Search = strchr(Message, '#');
 			char NamesChannel[512];
 			char NamesNick[64]; //Used by the do-while loop.
-			struct ChannelList *ChannelStruct = NULL;
+			class ChannelList *ChannelStruct = NULL;
 			
 			//Copy in the channel for this.
 			for (; Search[Inc] != ' ' && Search[Inc] != '\0' && Inc < sizeof NamesChannel - 1; ++Inc)
@@ -779,13 +778,13 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				while (*Search == ' ') ++Search; //Skip past starting whitespace if reentering loop.
 				
 				//They are an OP or something. Store their symbol.
-				if (*Search == '!' || *Search == '@' || *Search == '#'
+				while (*Search == '!' || *Search == '@' || *Search == '#'
 					|| *Search == '$' || *Search == '%' || *Search == '&'
 					|| *Search == '*' || *Search == '+'
 					|| *Search == '=' || *Search == '-' || *Search == '('
 					|| *Search == ')' || *Search == '?' || *Search == '~')
 				{
-					Modes = State_UserModes_Get_Symbol2Mode(*Search++);
+					Modes |= State_UserModes_Get_Symbol2Mode(*Search++);
 				}
 				
 				//Get the nickname for this name.
@@ -796,7 +795,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				NamesNick[Inc] = '\0';
 				
 				
-				State_AddUserToChannel(NamesNick, Modes, ChannelStruct);
+				ChannelStruct->AddUser(NamesNick, Modes);
 				
 			} while ((Search = strchr(Search, ' ')));
 			
@@ -838,10 +837,10 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			if (Ignore_Check_Separate(Nick, Ident, Mask, NEXUS_IGNORE_VISIBLE))
 			{
 				//Delete them from our users list.
-				struct ChannelList *const Chan = State_LookupChannel(Channel);
+				class ChannelList *const Chan = State_LookupChannel(Channel);
 				if (!Chan) break; ///Baaaad data.
 				
-				State_DelUserFromChannel(Nick, Chan);
+				Chan->DelUser(Nick);
 				
 				//And tell users they are gone.
 				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s PART %s :\"Ghosted by a NEXUS BNC ignore rule\"\r\n", Nick, Ident, Mask, Channel);
@@ -891,11 +890,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					case IRCMSG_JOIN:
 					{ //We joined a channel.
 						char NewChannel[2048];
-						struct ChannelList *Chan;
+						class ChannelList *Chan;
 						IRC_GetMessageData(Message, NewChannel);
 						
 						Chan = State_AddChannel(NewChannel);
-						State_AddUserToChannel(IRCConfig.Nick, 0, Chan);
+						Chan->AddUser(IRCConfig.Nick, 0);
 						
 						//Send a WHO
 						snprintf(OutBuf, sizeof OutBuf, "WHO %s\r\n", NewChannel);
@@ -938,7 +937,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				
 				case IRCMSG_NICK:
 				{ //Change the nick for them in all channels they exist in.
-					struct ChannelList *Worker = ChannelListCore;
+					std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
 					char NewNick_[64], *NewNick = NewNick_;
 					
 					//Get their old nick.
@@ -947,18 +946,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					
 					if (*NewNick == ':') ++NewNick;
 					
-					for (; Worker; Worker = Worker->Next)
+					for (; Iter != ChannelListCore.end(); ++Iter)
 					{
-						struct _UserList *User = State_GetUserInChannel(Nick, Worker);
-						unsigned char Modes = 0;
+						ChannelList *Chan = &Iter->second;
 						
-						//Doesn't exist in that channel.
-						if (!User) continue;
-						
-						Modes = User->Modes;
-						
-						State_DelUserFromChannel(Nick, Worker); //Delete the old nickname.
-						State_AddUserToChannel(NewNick, Modes, Worker); //Create the new one.
+						Chan->RenameUser(Nick, NewNick);
 					}
 					break;
 				}
@@ -966,7 +958,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				case IRCMSG_JOIN:
 				{ //Add this user to the channel.
 					char DaChannel[512], *Search;
-					struct ChannelList *ChannelStruct;
+					class ChannelList *ChannelStruct;
 					
 					IRC_BreakdownNick(Message, Nick, Ident, Mask);
 					IRC_GetMessageData(Message, DaChannel);
@@ -977,11 +969,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 
 					if (MsgType == IRCMSG_JOIN)
 					{
-						State_AddUserToChannel(Nick, 0, ChannelStruct);
+						ChannelStruct->AddUser(Nick, 0);
 					}
 					else
 					{
-						State_DelUserFromChannel(Nick, ChannelStruct);
+						ChannelStruct->DelUser(Nick);
 					}
 					break;
 				}
@@ -994,8 +986,8 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		{
 			const char *Worker = strchr(Message, '#');
 			char Channel[256], Nick[64];
-			struct _UserList *UserStruct = NULL;
-			struct ChannelList *ChannelStruct = NULL;
+			struct UserStruct *UserStruct = NULL;
+			class ChannelList *ChannelStruct = NULL;
 			unsigned Inc = 0;
 			char ModeLetter = 0;
 			bool SettingMode = false;
@@ -1053,7 +1045,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			if (!(ChannelStruct = State_LookupChannel(Channel))) goto ForwardVerbatim; //Can't find the channel.
 			
 			//Look up this user.
-			if (!(UserStruct = State_GetUserInChannel(Nick, ChannelStruct))) goto ForwardVerbatim; //Can't find the nick.
+			if (!(UserStruct = ChannelStruct->GetUser(Nick))) goto ForwardVerbatim; //Can't find the nick.
 			
 			//Now alter their mode accordingly.
 			if (SettingMode)
@@ -1099,11 +1091,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			}
 			else
 			{ /*Someone else has been kicked.*/
-				struct ChannelList *ChanStruct = State_LookupChannel(KChan);
+				class ChannelList *ChanStruct = State_LookupChannel(KChan);
 				
 				if (!ChanStruct) return; //Can't find the channel.
 				
-				State_DelUserFromChannel(KNick, ChanStruct);
+				ChanStruct->DelUser(KNick);
 			}
 			
 			//Now write the message to each client.
@@ -1113,7 +1105,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		{ //Handles quitting per-user.
 			char Nick[64], Ident[64], Mask[256];
 			IRC_BreakdownNick(Message, Nick, Ident, Mask);
-			struct ChannelList *Worker = ChannelListCore;
 			
 			if (!strcmp(Nick, IRCConfig.Nick))
 			{ //Uhoh, it's us.
@@ -1144,9 +1135,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			}
 			
 			//Yay! Not us!
-			for (; Worker; Worker = Worker->Next)
+			std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
+			
+			for (; Iter != ChannelListCore.end(); ++Iter)
 			{
-				State_DelUserFromChannel(Nick, Worker); //If it doesn't find it, that's fine.
+				Iter->second.DelUser(Nick);
 			}
 			
 			//Now forward to all our users.
@@ -1199,13 +1192,12 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 	}
 	else if (!strcmp(PrimaryCommand, "status")) //They want a list of clients and whatnot.
 	{
-		struct ChannelList *ChannelWorker = ChannelListCore;
 		struct ClientList *ClientWorker = ClientListCore;
 		
-		unsigned ChannelCount = 0, ClientCount = 0, Inc = 1;
+		const unsigned ChannelCount = ChannelListCore.size();
+		unsigned ClientCount = 0, Inc = 1;
 		
 		//Count channels.
-		for (; ChannelWorker; ChannelWorker = ChannelWorker->Next, ++ChannelCount);
 		
 		//Count clients.
 		for (; ClientWorker; ClientWorker = ClientWorker->Next, ++ClientCount);
@@ -1215,10 +1207,12 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 				IRCConfig.Nick);
 		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		
-		for (ChannelWorker = ChannelListCore; ChannelWorker != NULL; ChannelWorker = ChannelWorker->Next, ++Inc)
+		std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
+		
+		for (; Iter != ChannelListCore.end(); ++Iter, ++Inc)
 		{
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u] %s\r\n",
-					IRCConfig.Nick, Inc, ChannelCount, ChannelWorker->Channel);
+					IRCConfig.Nick, Inc, ChannelCount, Iter->second.GetChannelName());
 			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		}
 
