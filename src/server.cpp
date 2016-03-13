@@ -297,7 +297,6 @@ static void Server_SendChannelNamesList(const class ChannelList *const Channel, 
 	struct UserStruct *Us = Channel->GetUser(IRCConfig.Nick);
 	if (Us->Modes != 0)
 	{
-		puts("Sent!");
 		snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " MODE %s +%c %s\r\n", Channel->GetChannelName(), State_UserModes_Get_Mode2Symbol(Us->Modes), IRCConfig.Nick);
 		Net_Write(ClientDescriptor, OutBuf, strlen(OutBuf));
 	}
