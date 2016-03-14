@@ -19,14 +19,14 @@ std::map<std::string, ChannelList> ChannelListCore;
 //Prototypes
 
 //Functions
-ChannelList *State_AddChannel(const char *const Channel)
+ChannelList *State::AddChannel(const char *const Channel)
 {
 	ChannelList NewChan(Channel);
 	ChannelListCore[Channel] = NewChan;
 	return &ChannelListCore[Channel];
 }
 
-class ChannelList *State_LookupChannel(const char *const ChannelName)
+class ChannelList *State::LookupChannel(const char *const ChannelName)
 {
 	std::map<std::string, class ChannelList>::iterator Iter = ChannelListCore.begin();
 	
@@ -41,7 +41,7 @@ class ChannelList *State_LookupChannel(const char *const ChannelName)
 	return NULL;
 }
 
-bool State_DelChannel(const char *const Channel)
+bool State::DelChannel(const char *const Channel)
 {
 	return ChannelListCore.erase(Channel);
 }
@@ -59,12 +59,12 @@ void ChannelList::WipeUsers(void)
 	this->UserList.clear();
 }
 
-void State_ShutdownChannelList(void)
+void State::ShutdownChannelList(void)
 {
 	ChannelListCore.clear();
 }
 
-unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol)
+unsigned char State::UserModes_Get_Symbol2Mode(const char Symbol)
 {
 	switch (Symbol)
 	{
@@ -85,7 +85,7 @@ unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol)
 	}
 }
 
-char State_UserModes_Get_Mode2Symbol(const unsigned char Modes)
+char State::UserModes_Get_Mode2Symbol(const unsigned char Modes)
 {
 	if (Modes & F_IRCMODE_IRCSTAFF) return '!';
 	else if (Modes & F_IRCMODE_FOUNDER) return '~';
@@ -96,7 +96,7 @@ char State_UserModes_Get_Mode2Symbol(const unsigned char Modes)
 	else return 0;
 }
 
-unsigned char State_UserModes_Get_Letter2Mode(char Letter)
+unsigned char State::UserModes_Get_Letter2Mode(char Letter)
 {
 	switch (Letter)
 	{

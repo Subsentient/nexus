@@ -73,14 +73,16 @@ public:
 
 
 //Functions
-bool State_DelChannel(const char *const Channel);
-class ChannelList *State_AddChannel(const char *const Channel);
-void State_ShutdownChannelList(void);
-class ChannelList *State_LookupChannel(const char *const ChannelName);
-char State_UserModes_Get_Mode2Symbol(const unsigned char Modes);
-unsigned char State_UserModes_Get_Symbol2Mode(const char Symbol);
-unsigned char State_UserModes_Get_Letter2Mode(char Letter);
-
+namespace State
+{
+	bool DelChannel(const char *const Channel);
+	class ChannelList *AddChannel(const char *const Channel);
+	void ShutdownChannelList(void);
+	class ChannelList *LookupChannel(const char *const ChannelName);
+	char UserModes_Get_Mode2Symbol(const unsigned char Modes);
+	unsigned char UserModes_Get_Symbol2Mode(const char Symbol);
+	unsigned char UserModes_Get_Letter2Mode(char Letter);
+}
 //Globals
 extern std::map<std::string, ChannelList> ChannelListCore;
 #endif //__STATE_HEADER__

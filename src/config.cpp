@@ -27,7 +27,7 @@ struct NEXUSConfig NEXUSConfig = { NEXUS_MAXSIMUL_DEFAULT, NEXUS_PORT_DEFAULT,
 								(60 * 60) * 8 //Eight hour default
 								};
 
-bool Config_ReadConfig(void)
+bool Config::ReadConfig(void)
 {
 	FILE *FD = NULL;
 	struct stat FileStat;
@@ -228,7 +228,7 @@ bool Config_ReadConfig(void)
 	return true;
 }
 
-bool Config_CheckConfig(void)
+bool Config::CheckConfig(void)
 {
 	//We need at least a nick and a server name.
 	if (!*IRCConfig.Nick || !*IRCConfig.Server) return false;

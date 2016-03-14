@@ -7,8 +7,8 @@
 
 #include <stdbool.h>
 #include "server.h"
-#define IRC_CODE_OK 1
-#define IRC_CODE_NICKTAKEN 433
+#define IRCCODE_OK 1
+#define IRCCODE_NICKTAKEN 433
 
 //Enums
 enum IRCMessageType
@@ -34,15 +34,17 @@ enum IRCMessageType
 };
 
 //Functions
-bool IRC_GetStatusCode(const char *Message, int *OutNumber);
-bool IRC_Connect(void);
-void IRC_NickChange(const char *Nick);
-void IRC_Loop(const char *IRCBuf);
-void IRC_Pong(const char *Param);
-bool IRC_Disconnect(void);
-enum IRCMessageType IRC_GetMessageType(const char *InStream_);
-bool IRC_GetMessageData(const char *Message, char *OutData);
-bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientListStruct *const Client);
-bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut);
-
+namespace IRC
+{
+	bool GetStatusCode(const char *Message, int *OutNumber);
+	bool Connect(void);
+	void NickChange(const char *Nick);
+	void Loop(const char *IRCBuf);
+	void Pong(const char *Param);
+	bool Disconnect(void);
+	enum IRCMessageType GetMessageType(const char *InStream_);
+	bool GetMessageData(const char *Message, char *OutData);
+	bool AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientListStruct *const Client);
+	bool BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut);
+}
 #endif //__IRC_HEADER__

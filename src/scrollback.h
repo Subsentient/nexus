@@ -21,9 +21,12 @@ struct ScrollbackList
 extern struct ScrollbackList *ScrollbackCore;
 
 ///Functions
-struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, const char *Target, time_t Time);
-void Scrollback_DelMsg(struct ScrollbackList *ToDel);
-void Scrollback_Shutdown(void);
-void Scrollback_Reap(void);
+namespace Scrollback
+{
+	struct ScrollbackList *AddMsg(const char *Msg, const char *Origin, const char *Target, time_t Time);
+	void DelMsg(struct ScrollbackList *ToDel);
+	void Shutdown(void);
+	void Reap(void);
+}
 
 #endif //__SCROLLBACK_HEADER__

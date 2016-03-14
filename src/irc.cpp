@@ -24,22 +24,22 @@ just torn directly out of aqu4bot.
 #include "nexus.h"
 
 //Functions
-void IRC_NickChange(const char *Nick)
+void IRC::NickChange(const char *Nick)
 {
 	char OutBuf[1024];
 	
 	snprintf(OutBuf, sizeof OutBuf, "NICK %s\r\n", Nick);
-	Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+	Net::Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 }
 
-bool IRC_Connect(void)
+bool IRC::Connect(void)
 {
 	char UserString[1024];
 	bool ServerConnectOK = false;
 	char MessageBuf[2048];
 	int IRCCode = 0;
 	
-	if (!Net_Connect(IRCConfig.Server, IRCConfig.PortNum, &IRCDescriptor))
+	if (!Net::Connect(IRCConfig.Server, IRCConfig.PortNum, &IRCDescriptor))
 	{
 		fprintf(stderr, "NEXUS has failed to connect to the IRC server %s:%hu\n.", IRCConfig.Server, IRCConfig.PortNum);
 		return false;
@@ -47,14 +47,14 @@ bool IRC_Connect(void)
 
 	//Send USER.
 	snprintf(UserString, sizeof UserString, "USER %s 8 * :%s\r\n", IRCConfig.Ident, IRCConfig.RealName);
-	Net_Write(IRCDescriptor, UserString, strlen(UserString));
+	Net::Write(IRCDescriptor, UserString, strlen(UserString));
 	
 	//Send NICK.
-	IRC_NickChange(IRCConfig.Nick);
+	IRC::NickChange(IRCConfig.Nick);
 	
 	while (!ServerConnectOK)
 	{
-		const bool NRR = Net_Read(IRCDescriptor, MessageBuf, sizeof MessageBuf, true);
+		const bool NRR = Net::Read(IRCDescriptor, MessageBuf, sizeof MessageBuf, true);
 		
 		if (!NRR)
 		{
@@ -68,20 +68,20 @@ bool IRC_Connect(void)
 		if (!strncmp("PING ", MessageBuf,  sizeof("PING ") - 1))
 		{
 			*strchr(MessageBuf, 'I') = 'O';
-			Net_Write(IRCDescriptor, MessageBuf, strlen(MessageBuf));
-			Net_Write(IRCDescriptor, "\r\n", sizeof "\r\n" - 1);
+			Net::Write(IRCDescriptor, MessageBuf, strlen(MessageBuf));
+			Net::Write(IRCDescriptor, "\r\n", sizeof "\r\n" - 1);
 			continue;
 		}
 		
 		//Get the status code if any.
-		IRC_GetStatusCode(MessageBuf, &IRCCode);
+		IRC::GetStatusCode(MessageBuf, &IRCCode);
 		
 		switch (IRCCode)
 		{
-			case IRC_CODE_OK:
+			case IRCCODE_OK:
 				ServerConnectOK = true;
 				break;
-			case IRC_CODE_NICKTAKEN:
+			case IRCCODE_NICKTAKEN:
 			{ //This presents a problem.
 				fprintf(stderr, "Nickname for IRC server is in use.\n");
 				return false;
@@ -96,14 +96,14 @@ bool IRC_Connect(void)
 		char OutBuf[2048];
 		
 		snprintf(OutBuf, sizeof OutBuf, "PRIVMSG NickServ :identify %s %s\r\n", IRCConfig.NickServUser, IRCConfig.NickServPassword);
-		Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+		Net::Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 	}
 	
 	return true;
 }
 
 	
-bool IRC_GetStatusCode(const char *Message, int *OutNumber)
+bool IRC::GetStatusCode(const char *Message, int *OutNumber)
 { /*Returns true if we get a status code.*/
 	unsigned Inc = 0; //This function ripped directly out of aqu4bot.
 	char Num[64];
@@ -122,7 +122,7 @@ bool IRC_GetStatusCode(const char *Message, int *OutNumber)
 	return true;
 }
 
-enum IRCMessageType IRC_GetMessageType(const char *InStream_)
+enum IRCMessageType IRC::GetMessageType(const char *InStream_)
 { //Another function torn out of aqu4bot.
 	const char *InStream = InStream_;
 	char Command[32];
@@ -158,32 +158,32 @@ enum IRCMessageType IRC_GetMessageType(const char *InStream_)
 	else return IRCMSG_UNKNOWN;
 }
 
-bool IRC_Disconnect(void)
+bool IRC::Disconnect(void)
 {
 	char OutBuf[2048];
 	
 	//I don't care if this fails.
 	snprintf(OutBuf, sizeof OutBuf, "QUIT :NEXUS BNC " NEXUS_VERSION " shutting down.\r\n");
-	Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+	Net::Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 	
-	return Net_Close(IRCDescriptor);
+	return Net::Close(IRCDescriptor);
 }
 
 //Where all IRC data processing begins.
-void IRC_Loop(const char *IRCBuf)
+void IRC::Loop(const char *IRCBuf)
 {
 	//if we get this far, we got data.
 	if (!strncmp(IRCBuf, "PING", sizeof "PING" - 1))
 	{ //Reply to ping and exit.
-		IRC_Pong(IRCBuf);
+		IRC::Pong(IRCBuf);
 		return;
 	}
 	
 	//Not a ping, we have real work to do.
-	NEXUS_IRC2NEXUS(IRCBuf);
+	NEXUS::IRC2NEXUS(IRCBuf);
 }
 
-void IRC_Pong(const char *Param)
+void IRC::Pong(const char *Param)
 { //Replies to IRC server's ping request.
 	char PingMsg[1024];
 	
@@ -192,10 +192,10 @@ void IRC_Pong(const char *Param)
 	
 	*strchr(PingMsg, 'I') = 'O'; //Turn PING to PONG
 	
-	Net_Write(IRCDescriptor, PingMsg, strlen(PingMsg));
+	Net::Write(IRCDescriptor, PingMsg, strlen(PingMsg));
 }
 
-bool IRC_GetMessageData(const char *Message, char *OutData)
+bool IRC::GetMessageData(const char *Message, char *OutData)
 {
 	const char *Worker = Message;
 	
@@ -212,7 +212,7 @@ bool IRC_GetMessageData(const char *Message, char *OutData)
 }
 
 
-bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientListStruct *const Client)
+bool IRC::AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientListStruct *const Client)
 { //Changes a message's origin to the client's.
 	const char *Jump = strchr(InStream, ' ');
 	
@@ -225,7 +225,7 @@ bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigne
 	return true;
 }
 
-bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut)
+bool IRC::BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut)
 {
 	char ComplexNick[256], *Worker = ComplexNick;
 	unsigned Inc = 0;

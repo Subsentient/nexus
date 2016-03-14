@@ -6,22 +6,19 @@
 #define __NETCORE_HEADER__
 
 //Structures
-#ifdef DEBUG
-#define Net_Write(a, b, c) 		printf("Net_Write >> %s:%d\n", __FILE__, __LINE__), Net_Write_(a, b, c)
-#else
-#define Net_Write Net_Write_
-#endif
 
 //Globals
 extern int ServerDescriptor, IRCDescriptor;
 
 //Function prototypes
-bool Net_InitServer(unsigned short PortNum);
-bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText);
-bool Net_Write_(int const ClientDescriptor, const void *InMsg, unsigned WriteSize);
-void Net_ShutdownServer(void);
-bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_);
-bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen);
-bool Net_Close(const int Descriptor);
-
+namespace Net
+{
+	bool InitServer(unsigned short PortNum);
+	bool Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText);
+	bool Write(int const ClientDescriptor, const void *InMsg, unsigned WriteSize);
+	void ShutdownServer(void);
+	bool Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_);
+	bool AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen);
+	bool Close(const int Descriptor);
+}
 #endif //__NETCORE_HEADER__

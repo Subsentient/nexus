@@ -42,15 +42,21 @@ enum ServerMessageType
 };
 
 //Prototypes.
-struct ClientListStruct *Server_ClientList_Lookup(const int Descriptor);
-struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct);
-bool Server_ClientList_Del(const int Descriptor);
-void Server_ClientList_Shutdown(void);
-bool Server_ForwardToAll(const char *const InStream);
-struct ClientListStruct *Server_AcceptLoop(void);
-void Server_SendQuit(const int Descriptor, const char *const Reason);
-enum ServerMessageType Server_GetMessageType(const char *InStream_);
-bool Server_NukeClient(const int Descriptor);
+namespace Server
+{
+	namespace ClientList
+	{
+		struct ClientListStruct *Lookup(const int Descriptor);
+		struct ClientListStruct *Add(const struct ClientListStruct *const InStruct);
+		bool Del(const int Descriptor);
+		void Shutdown(void);
+	}
+	bool ForwardToAll(const char *const InStream);
+	struct ClientListStruct *AcceptLoop(void);
+	void SendQuit(const int Descriptor, const char *const Reason);
+	enum ServerMessageType GetMessageType(const char *InStream_);
+	bool NukeClient(const int Descriptor);
+}
 
 //Globals
 extern std::list<struct ClientListStruct> ClientListCore;

@@ -40,7 +40,7 @@ static int SocketFamily;
 
 /*Functions*/
 
-bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
+bool Net::Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 {
 	int Status = 0;
 	unsigned char Byte = 0;
@@ -78,7 +78,7 @@ bool Net_Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText)
 	return true;
 }
 
-bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
+bool Net::Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 {
 	unsigned Transferred = 0, TotalTransferred = 0;
 
@@ -116,7 +116,7 @@ bool Net_Write_(int const Descriptor, const void *InMsg, unsigned WriteSize)
 	return true;
 }
 
-bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_)
+bool Net::Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_)
 {
 
 	char *FailMsg = (char*)"Failed to establish a connection to the server:";
@@ -155,7 +155,7 @@ bool Net_Connect(const char *InHost, unsigned short PortNum, int *SocketDescript
 	return true;
 }
 
-bool Net_InitServer(unsigned short PortNum)
+bool Net::InitServer(unsigned short PortNum)
 {
 	struct addrinfo BStruct, *Res = NULL;
 	char AsciiPort[16] =  { '\0' };
@@ -198,7 +198,7 @@ bool Net_InitServer(unsigned short PortNum)
 	return true;
 }
 
-bool Net_Close(const int Descriptor)
+bool Net::Close(const int Descriptor)
 {
 #ifdef WIN
 	return !closesocket(Descriptor);
@@ -207,23 +207,23 @@ bool Net_Close(const int Descriptor)
 #endif //WIN
 }
 
-void Net_ShutdownServer(void)
+void Net::ShutdownServer(void)
 {
 	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
 	
 	//Close all connections to clients.
 	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		Net_Close(Iter->Descriptor);
+		Net::Close(Iter->Descriptor);
 	}
 	
-	Server_ClientList_Shutdown(); //Free list of clients.
-	Net_Close(ServerDescriptor); //Close the main server socket.
+	Server::ClientList::Shutdown(); //Free list of clients.
+	Net::Close(ServerDescriptor); //Close the main server socket.
 	ServerDescriptor = 0;
 }
 
 //We put this in our main loop to scan for clients who want to connect.
-bool Net_AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen)
+bool Net::AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen)
 {
 	struct sockaddr ClientInfo;
 	struct sockaddr_in Addr;

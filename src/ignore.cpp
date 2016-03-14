@@ -11,9 +11,12 @@
 #include "nexus.h"
 static struct IgnoreList *IgnoreCore;
 
-static bool Ignore_Del(struct IgnoreList *Delete);
+namespace Ignore
+{
+	static bool Del(struct IgnoreList *Delete);
+}
 
-bool Ignore_Add(const char *Message, const unsigned WhatToBlock)
+bool Ignore::Add(const char *Message, const unsigned WhatToBlock)
 { //Success if the broken down nick/ident/mask makes sense and can be added.
 	struct IgnoreList *Worker = IgnoreCore;
 	
@@ -21,7 +24,7 @@ bool Ignore_Add(const char *Message, const unsigned WhatToBlock)
 	char Ident[sizeof ((struct IgnoreList*)0)->Ident];
 	char Mask[sizeof ((struct IgnoreList*)0)->Mask];
 	
-	if (!IRC_BreakdownNick(Message, Nick, Ident, Mask))
+	if (!IRC::BreakdownNick(Message, Nick, Ident, Mask))
 	{ //Bad or corrupted input.
 		return false;
 	}
@@ -49,16 +52,16 @@ bool Ignore_Add(const char *Message, const unsigned WhatToBlock)
 	return true;
 }
 
-bool Ignore_Check_Separate(const char *const Nick, const char *const Ident, const char *const Mask, const unsigned WhatToCheck)
+bool Ignore::Check_Separate(const char *const Nick, const char *const Ident, const char *const Mask, const unsigned WhatToCheck)
 {
 	char TmpBuf[2048];
 	
 	snprintf(TmpBuf, sizeof TmpBuf, ":%s!%s@%s", Nick, Ident, Mask);
 	
-	return Ignore_Check(TmpBuf, WhatToCheck);
+	return Ignore::Check(TmpBuf, WhatToCheck);
 }
 
-bool Ignore_Check(const char *Message, const unsigned WhatToCheck)
+bool Ignore::Check(const char *Message, const unsigned WhatToCheck)
 { //See if a message originates/user is blocked.
 	struct IgnoreList *Worker = IgnoreCore;
 	
@@ -66,7 +69,7 @@ bool Ignore_Check(const char *Message, const unsigned WhatToCheck)
 	char CheckIdent[sizeof ((struct IgnoreList*)0)->Ident];
 	char CheckMask[sizeof ((struct IgnoreList*)0)->Mask];
 	
-	IRC_BreakdownNick(Message, CheckNick, CheckIdent, CheckMask);
+	IRC::BreakdownNick(Message, CheckNick, CheckIdent, CheckMask);
 	
 	for (; Worker; Worker = Worker->Next)
 	{
@@ -81,13 +84,13 @@ bool Ignore_Check(const char *Message, const unsigned WhatToCheck)
 	return false;
 }
 
-bool Ignore_Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange)
+bool Ignore::Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange)
 {
 	char Nick[sizeof ((struct IgnoreList*)0)->Nick];
 	char Ident[sizeof ((struct IgnoreList*)0)->Ident];
 	char Mask[sizeof ((struct IgnoreList*)0)->Mask];
 	
-	IRC_BreakdownNick(VHost, Nick, Ident, Mask);
+	IRC::BreakdownNick(VHost, Nick, Ident, Mask);
 	
 	struct IgnoreList *Worker = IgnoreCore;
 	
@@ -111,7 +114,7 @@ bool Ignore_Modify(const char *const VHost, const bool Adding, const unsigned Wh
 				
 				if (!Worker->WhatToBlock)
 				{
-					Ignore_Del(Worker);
+					Ignore::Del(Worker);
 				}
 			}
 			return true;
@@ -120,14 +123,14 @@ bool Ignore_Modify(const char *const VHost, const bool Adding, const unsigned Wh
 	
 	if (Adding)
 	{ //Doesn't exist, create it.
-		Ignore_Add(VHost, WhatToChange);
+		Ignore::Add(VHost, WhatToChange);
 		return true;
 	}
 	
 	return false;
 }
 
-void Ignore_Shutdown(void)
+void Ignore::Shutdown(void)
 {
 	struct IgnoreList *Worker = IgnoreCore, *Next = NULL;
 	
@@ -139,7 +142,7 @@ void Ignore_Shutdown(void)
 	IgnoreCore = NULL;
 }
 
-static bool Ignore_Del(struct IgnoreList *Delete)
+static bool Ignore::Del(struct IgnoreList *Delete)
 {
 	
 	if (Delete == IgnoreCore)

@@ -31,5 +31,8 @@ extern struct _IRCConfig IRCConfig;
 extern char ConfigFilePath[1024];
 
 //Functions
-bool Config_ReadConfig(void);
-bool Config_CheckConfig(void);
+namespace Config
+{
+	bool ReadConfig(void);
+	bool CheckConfig(void);
+}

@@ -23,14 +23,18 @@
 #include "ignore.h"
 
 //Prototypes
-static void NEXUS_HandleClientInterface(const char *const Message, struct ClientListStruct *Client);
 
 //Globals
 static fd_set DescriptorSet;
 static int DescriptorMax;
 
+namespace NEXUS
+{
+	static void HandleClientInterface(const char *const Message, struct ClientListStruct *Client);
+	static void MasterLoop(void);
+}
 
-void MasterLoop(void)
+static void NEXUS::MasterLoop(void)
 {
 	while (1)
 	{
@@ -57,14 +61,14 @@ void MasterLoop(void)
 				}
 				
 				
-				struct ClientListStruct *Client = Server_ClientList_Lookup(Inc);
+				struct ClientListStruct *Client = Server::ClientList::Lookup(Inc);
 				
 				//Not a whole lot we can do.
 				if (!Client) continue;
 				
-				Net_Close(Client->Descriptor);
-				NEXUS_DescriptorSet_Del(Client->Descriptor);
-				Server_ClientList_Del(Client->Descriptor);
+				Net::Close(Client->Descriptor);
+				NEXUS::DescriptorSet_Del(Client->Descriptor);
+				Server::ClientList::Del(Client->Descriptor);
 				
 				//Remove it from the 'read' set if it's there.
 				if (FD_ISSET(Inc, &Set))
@@ -80,10 +84,10 @@ void MasterLoop(void)
 			
 			if (Inc == ServerDescriptor)
 			{ //A client wants to join us.
-				struct ClientListStruct *const Client = Server_AcceptLoop();
+				struct ClientListStruct *const Client = Server::AcceptLoop();
 				if (!Client) continue;
 				
-				NEXUS_DescriptorSet_Add(Client->Descriptor);
+				NEXUS::DescriptorSet_Add(Client->Descriptor);
 				continue;
 			}
 			else if (Inc == IRCDescriptor)
@@ -92,53 +96,53 @@ void MasterLoop(void)
 
 				//Check IRC for data.
 				bool NRR;
-				NRR = Net_Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
+				NRR = Net::Read(IRCDescriptor, IRCBuf, sizeof IRCBuf, true);
 			
 				if (!NRR)
 				{ //Error.
 					char OutBuf[2048];
 				Errorrrz:
-					IRC_Disconnect();
+					IRC::Disconnect();
 					
 					//Tell everyone what happened.
 					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
-					Server_ForwardToAll(OutBuf);
+					Server::ForwardToAll(OutBuf);
 					
-					Server_SendQuit(-1, "NEXUS has lost the connection to the IRC server."); //Now make them quit.
-					Net_ShutdownServer();
+					Server::SendQuit(-1, "NEXUS has lost the connection to the IRC server."); //Now make them quit.
+					Net::ShutdownServer();
 					
 					Exit(1);
 				}
 				
 				//Process the data.
-				IRC_Loop(IRCBuf);
+				IRC::Loop(IRCBuf);
 				continue;
 			}
 			else
 			{ //Client wants something.
-				struct ClientListStruct *Client = Server_ClientList_Lookup(Inc);
+				struct ClientListStruct *Client = Server::ClientList::Lookup(Inc);
 				
 				if (!Client)
 				{
 					//Kill their connection and remove them from the descriptor set.
-					Net_Close(Inc);
-					NEXUS_DescriptorSet_Del(Inc);
+					Net::Close(Inc);
+					NEXUS::DescriptorSet_Del(Inc);
 					continue; //BS client
 				}
 				
 				char ClientBuf[2048];
 				
-				const bool NRR = Net_Read(Client->Descriptor, ClientBuf, sizeof ClientBuf, true);
+				const bool NRR = Net::Read(Client->Descriptor, ClientBuf, sizeof ClientBuf, true);
 				
 				if (!NRR)
 				{ //he ded
-					Net_Close(Client->Descriptor);
-					NEXUS_DescriptorSet_Del(Client->Descriptor);
-					Server_ClientList_Del(Client->Descriptor);
+					Net::Close(Client->Descriptor);
+					NEXUS::DescriptorSet_Del(Client->Descriptor);
+					Server::ClientList::Del(Client->Descriptor);
 					continue;
 				}
 				
-				NEXUS_NEXUS2IRC(ClientBuf, Client);
+				NEXUS::NEXUS2IRC(ClientBuf, Client);
 				continue;
 			}
 
@@ -146,7 +150,7 @@ void MasterLoop(void)
 	}
 }
 
-void NEXUS_DescriptorSet_Add(const int Descriptor)
+void NEXUS::DescriptorSet_Add(const int Descriptor)
 {
 	if (FD_ISSET(Descriptor, &DescriptorSet)) return;
 	
@@ -155,7 +159,7 @@ void NEXUS_DescriptorSet_Add(const int Descriptor)
 	FD_SET(Descriptor, &DescriptorSet);
 }
 
-bool NEXUS_DescriptorSet_Del(const int Descriptor)
+bool NEXUS::DescriptorSet_Del(const int Descriptor)
 {
 	if (!FD_ISSET(Descriptor, &DescriptorSet)) return false;
 	
@@ -184,7 +188,7 @@ int main(int argc, char **argv)
 	setvbuf(stderr, NULL, _IONBF, 0);
 	
 	
-	//Ignore sigpipe from send() in Net_Write()
+	//Ignore sigpipe from send() in Net::Write()
 	signal(SIGPIPE, SIG_IGN);
 	
 	puts("NEXUS BNC " NEXUS_VERSION "\n");
@@ -355,12 +359,12 @@ int main(int argc, char **argv)
 		}
 	}
 	
-	if (!Config_ReadConfig())
+	if (!Config::ReadConfig())
 	{ //We might still get what we need from CLI arguments.
 		fprintf(stderr, "WARNING: Failed to load config file!\n");
 	}
 	
-	if (!Config_CheckConfig())
+	if (!Config::CheckConfig())
 	{ //Bad configuration.
 		fprintf(stderr, "Configuration for NEXUS is invalid.\n"
 				"Please check your configuration and/or command line arguments.\n");
@@ -403,7 +407,7 @@ int main(int argc, char **argv)
 	
 	//Connect to the REAL IRC server.
 	printf("Connecting to IRC server \"%s:%hu\"... ", IRCConfig.Server, IRCConfig.PortNum);
-	if (!IRC_Connect())
+	if (!IRC::Connect())
 	{
 		fprintf(stderr, "Unable to connect to IRC server!\n");
 		return 1;
@@ -411,11 +415,11 @@ int main(int argc, char **argv)
 	puts("Done.");
 	
 	//Track the IRC descriptor.
-	NEXUS_DescriptorSet_Add(IRCDescriptor);
+	NEXUS::DescriptorSet_Add(IRCDescriptor);
 	
 	//Bring up the NEXUS pseudo-IRC-server.
 	printf("Bringing up NEXUS server on port %hu... ", NEXUSConfig.PortNum);
-	if (!Net_InitServer(NEXUSConfig.PortNum))
+	if (!Net::InitServer(NEXUSConfig.PortNum))
 	{
 		fprintf(stderr, "Failed to bring up NEXUS server on port %hu.\n", NEXUSConfig.PortNum);
 		return 1;
@@ -423,16 +427,16 @@ int main(int argc, char **argv)
 	puts("Done.");
 	
 	//Track the NEXUS server descriptor
-	NEXUS_DescriptorSet_Add(ServerDescriptor);
+	NEXUS::DescriptorSet_Add(ServerDescriptor);
 
-	MasterLoop();
+	NEXUS::MasterLoop();
 	return 0;
 }
 
 /*Processes data from a client and forwards it to the IRC server.*/
-void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
+void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 {
-	const enum ServerMessageType MsgType = Server_GetMessageType(Message);
+	const enum ServerMessageType MsgType = Server::GetMessageType(Message);
 	
 	CurrentClient = Client;
 	
@@ -446,14 +450,14 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 		
 			if (!*Message)
 			{ //Ded client.
-				Net_Close(Client->Descriptor);
-				NEXUS_DescriptorSet_Del(Client->Descriptor);
-				Server_ClientList_Del(Client->Descriptor);
+				Net::Close(Client->Descriptor);
+				NEXUS::DescriptorSet_Del(Client->Descriptor);
+				Server::ClientList::Del(Client->Descriptor);
 				return;
 			}
 			//Append \r\n and send to IRC server.
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
-			Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+			Net::Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 			
 			break;
 		}
@@ -486,7 +490,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 
 				while (*PassOn == ' ' || *PassOn == ':') ++PassOn;
 				
-				NEXUS_HandleClientInterface(PassOn, Client);
+				NEXUS::HandleClientInterface(PassOn, Client);
 				break; //Since it was for NEXUS, nobody else needs to see it.
 			}
 			
@@ -500,11 +504,11 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 				if (&*Iter == Client) continue; //Don't send to the one who just sent this.
 				
 				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Message);
-				Net_Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
+				Net::Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
 			}
 			
 			//Now we want to add it to our scrollback.
-			Scrollback_AddMsg(strchr(Search, ':') + 1, NULL, Target, time(NULL));
+			Scrollback::AddMsg(strchr(Search, ':') + 1, NULL, Target, time(NULL));
 			
 			goto ForwardVerbatim;
 		}
@@ -556,7 +560,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 				}
 				Channel[Inc] = '\0';
 				
-				if (State_LookupChannel(Channel) == NULL)
+				if (State::LookupChannel(Channel) == NULL)
 				{ //Only forward it if we are not already in that channel.
 					OneToJoin = true;
 					SubStrings.Cat(OutChannels, Channel, OutChannelsSize);
@@ -568,7 +572,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 			{ //We have some that are still good.
 				OutChannels[strlen(OutChannels) - 1] = '\0'; //Kill comma at the end.
 				SubStrings.Cat(OutChannels, "\r\n", OutChannelsSize);
-				Net_Write(IRCDescriptor, OutChannels, strlen(OutChannels));
+				Net::Write(IRCDescriptor, OutChannels, strlen(OutChannels));
 			}
 			
 			free(OutChannels); OutChannels = NULL;
@@ -583,15 +587,15 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 			if (!Start) break;
 			
 			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " PONG " NEXUS_FAKEHOST " %s\r\n", Start);
-			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 			break;
 		}
 		case SERVERMSG_QUIT:
 		{
-			Server_SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
-			Net_Close(Client->Descriptor);
-			NEXUS_DescriptorSet_Del(Client->Descriptor);
-			Server_ClientList_Del(Client->Descriptor);
+			Server::SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
+			Net::Close(Client->Descriptor);
+			NEXUS::DescriptorSet_Del(Client->Descriptor);
+			Server::ClientList::Del(Client->Descriptor);
 			break;
 		}
 	}
@@ -603,9 +607,9 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 
 /*Processes data from the real IRC server and then sends it to functions that reformat
  * said data so that clients connected to NEXUS IRC won't get confused.*/
-void NEXUS_IRC2NEXUS(const char *Message)
+void NEXUS::IRC2NEXUS(const char *Message)
 {
-	const enum IRCMessageType MsgType = IRC_GetMessageType(Message);
+	const enum IRCMessageType MsgType = IRC::GetMessageType(Message);
 	
 	switch (MsgType)
 	{
@@ -613,7 +617,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		
 		case IRCMSG_NOTICE:
 		{
-			if (!Ignore_Check(Message, NEXUS_IGNORE_NOTICE))
+			if (!Ignore::Check(Message, NEXUS_IGNORE_NOTICE))
 			{ //It's not ignored, so we should forward it verbatim.
 				goto ForwardVerbatim;
 			}
@@ -623,7 +627,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		{ //Append a \r\n and then send it to everyone.
 		ForwardVerbatim:
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
-			Server_ForwardToAll(OutBuf);
+			Server::ForwardToAll(OutBuf);
 			
 			break;
 		}
@@ -658,14 +662,14 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			const unsigned ToCheck = *Target == '#' ? NEXUS_IGNORE_CHANMSG : NEXUS_IGNORE_PRIVMSG;
 			
 			//Ignore it.
-			if (Ignore_Check(Origin, ToCheck)) break;
+			if (Ignore::Check(Origin, ToCheck)) break;
 			
 			//Go to the data.
 			while (*Worker == ' ') ++Worker;
 			if (*Worker == ':') ++Worker;
 			
 			//We have data, add it to the scrollback.
-			Scrollback_AddMsg(Worker, Origin, *Target == '#' ? Target : NULL, time(NULL));
+			Scrollback::AddMsg(Worker, Origin, *Target == '#' ? Target : NULL, time(NULL));
 			
 			goto ForwardVerbatim;
 		}
@@ -696,7 +700,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			NewTopic[sizeof NewTopic - 1] = '\0';
 		
 			//Lookup the channel.
-			if ((ChannelStruct = State_LookupChannel(Channel)) == NULL) return; //We aren't in that channel. Why send us a topic?
+			if ((ChannelStruct = State::LookupChannel(Channel)) == NULL) return; //We aren't in that channel. Why send us a topic?
 		
 			//Copy in the new topic.
 			ChannelStruct->SetTopic(NewTopic);
@@ -721,7 +725,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			if (*Worker++ == '\0') return; //Corrupt data.
 			
 			//Lookup the channel.
-			if (!(ChannelStruct = State_LookupChannel(Channel))) return; //Not in that channel.
+			if (!(ChannelStruct = State::LookupChannel(Channel))) return; //Not in that channel.
 			
 			//Get the setter of the topic.
 			for (Inc = 0; *Worker != ' ' && *Worker != '\0' && Inc < sizeof Setter - 1; ++Inc, ++Worker)
@@ -762,7 +766,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			NamesChannel[Inc] = '\0';
 			
 			//Can't find the channel.
-			if (!(ChannelStruct = State_LookupChannel(NamesChannel))) return;
+			if (!(ChannelStruct = State::LookupChannel(NamesChannel))) return;
 			
 			if (Search[Inc] == '\0') return; //Bad data. Failed.
 			
@@ -784,7 +788,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					|| *Search == '=' || *Search == '-' || *Search == '('
 					|| *Search == ')' || *Search == '?' || *Search == '~')
 				{
-					Modes |= State_UserModes_Get_Symbol2Mode(*Search++);
+					Modes |= State::UserModes_Get_Symbol2Mode(*Search++);
 				}
 				
 				//Get the nickname for this name.
@@ -801,7 +805,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			//Now send the message to the client.
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
-			Server_ForwardToAll(OutBuf);
+			Server::ForwardToAll(OutBuf);
 			break;
 		}
 		case IRCMSG_WHO:
@@ -834,17 +838,17 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			
 			//Now see if they are ignored and we need to ghost them.
-			if (Ignore_Check_Separate(Nick, Ident, Mask, NEXUS_IGNORE_VISIBLE))
+			if (Ignore::Check_Separate(Nick, Ident, Mask, NEXUS_IGNORE_VISIBLE))
 			{
 				//Delete them from our users list.
-				class ChannelList *const Chan = State_LookupChannel(Channel);
+				class ChannelList *const Chan = State::LookupChannel(Channel);
 				if (!Chan) break; ///Baaaad data.
 				
 				Chan->DelUser(Nick);
 				
 				//And tell users they are gone.
 				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s PART %s :\"Ghosted by a NEXUS BNC ignore rule\"\r\n", Nick, Ident, Mask, Channel);
-				Server_ForwardToAll(OutBuf);
+				Server::ForwardToAll(OutBuf);
 				break;
 			}
 			
@@ -870,10 +874,10 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				
 				for (; Iter != ClientListCore.end(); ++Iter)
 				{ //Rebuild so it matches their ident and IP.
-					if (IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, &*Iter))
+					if (IRC::AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, &*Iter))
 					{ //If we fail to alter the origin just don't send it.
 						strncat(OutBuf, "\r\n", sizeof OutBuf - strlen(OutBuf) - 2);
-						Net_Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
+						Net::Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
 					}
 				}
 				
@@ -884,7 +888,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 						char NewNick[2048];
 						
 						//update the nick.
-						IRC_GetMessageData(Message, NewNick);
+						IRC::GetMessageData(Message, NewNick);
 						strcpy(IRCConfig.Nick, *NewNick == ':' ? NewNick + 1 : NewNick);
 						break;
 					}
@@ -892,27 +896,27 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					{ //We joined a channel.
 						char NewChannel[2048];
 						class ChannelList *Chan;
-						IRC_GetMessageData(Message, NewChannel);
+						IRC::GetMessageData(Message, NewChannel);
 						
-						Chan = State_AddChannel(NewChannel);
+						Chan = State::AddChannel(NewChannel);
 						Chan->AddUser(IRCConfig.Nick, 0);
 						
 						//Send a WHO
 						snprintf(OutBuf, sizeof OutBuf, "WHO %s\r\n", NewChannel);
-						Net_Write(IRCDescriptor, OutBuf, strlen(OutBuf));
+						Net::Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 						break;
 					}
 					case IRCMSG_PART:
 					{ //We left a channel.
 						char GoneChannel[2048], *Search;
 						
-						IRC_GetMessageData(Message, GoneChannel);
+						IRC::GetMessageData(Message, GoneChannel);
 						
 						//Delete whatever part message they may have placed. We don't care.
 						if ((Search = strchr(GoneChannel, ' '))) *Search = '\0';
 						
 						//Now delete this parted channel.
-						State_DelChannel(GoneChannel);
+						State::DelChannel(GoneChannel);
 						break;
 					}
 					default:
@@ -921,14 +925,14 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			}
 
 			//Should we "see" this?
-			if (Ignore_Check(Message, NEXUS_IGNORE_VISIBLE)) break;
+			if (Ignore::Check(Message, NEXUS_IGNORE_VISIBLE)) break;
 			
 			//Send it to everyone.
 			char *NewM = (char*)malloc(strlen(Message) + 1 + (sizeof "\r\n" - 1));
 			strcpy(NewM, Message);
 			strcat(NewM, "\r\n");
 			
-			Server_ForwardToAll(NewM);
+			Server::ForwardToAll(NewM);
 			
 			free(NewM);
 			
@@ -942,8 +946,8 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					char NewNick_[64], *NewNick = NewNick_;
 					
 					//Get their old nick.
-					IRC_BreakdownNick(Message, Nick, Ident, Mask);
-					IRC_GetMessageData(Message, NewNick_);
+					IRC::BreakdownNick(Message, Nick, Ident, Mask);
+					IRC::GetMessageData(Message, NewNick_);
 					
 					if (*NewNick == ':') ++NewNick;
 					
@@ -961,12 +965,12 @@ void NEXUS_IRC2NEXUS(const char *Message)
 					char DaChannel[512], *Search;
 					class ChannelList *ChannelStruct;
 					
-					IRC_BreakdownNick(Message, Nick, Ident, Mask);
-					IRC_GetMessageData(Message, DaChannel);
+					IRC::BreakdownNick(Message, Nick, Ident, Mask);
+					IRC::GetMessageData(Message, DaChannel);
 					
 					if ((Search = strchr(DaChannel, ' '))) *Search = '\0';
 					
-					if (!(ChannelStruct = State_LookupChannel(DaChannel))) break;
+					if (!(ChannelStruct = State::LookupChannel(DaChannel))) break;
 
 					if (MsgType == IRCMSG_JOIN)
 					{
@@ -1022,7 +1026,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			++Worker; //Now on to the letter that tells us what mode.
 			
 			//Look up the mode by its letter.
-			ModeLetter = State_UserModes_Get_Letter2Mode(*Worker);
+			ModeLetter = State::UserModes_Get_Letter2Mode(*Worker);
 			
 			if (!ModeLetter) goto ForwardVerbatim; //Not something we can deal with.
 			
@@ -1043,7 +1047,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			Nick[Inc] = '\0';
 			
 			//Look up the channel.
-			if (!(ChannelStruct = State_LookupChannel(Channel))) goto ForwardVerbatim; //Can't find the channel.
+			if (!(ChannelStruct = State::LookupChannel(Channel))) goto ForwardVerbatim; //Can't find the channel.
 			
 			//Look up this user.
 			if (!(UserStruct = ChannelStruct->GetUser(Nick))) goto ForwardVerbatim; //Can't find the nick.
@@ -1066,7 +1070,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			unsigned Inc = 0;
 			
 			/*Get initial kick data into InBuf*/
-			IRC_GetMessageData(Message, InBuf);
+			IRC::GetMessageData(Message, InBuf);
 
 			
 			for (; Inc < sizeof KChan - 1 && *Worker != ' ' && *Worker != '\0'; ++Inc, ++Worker)
@@ -1088,11 +1092,11 @@ void NEXUS_IRC2NEXUS(const char *Message)
 
 			if (!strcmp(KNick, IRCConfig.Nick))
 			{ /*we have been kicked.*/
-				State_DelChannel(KChan);
+				State::DelChannel(KChan);
 			}
 			else
 			{ /*Someone else has been kicked.*/
-				class ChannelList *ChanStruct = State_LookupChannel(KChan);
+				class ChannelList *ChanStruct = State::LookupChannel(KChan);
 				
 				if (!ChanStruct) return; //Can't find the channel.
 				
@@ -1105,7 +1109,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 		case IRCMSG_QUIT:
 		{ //Handles quitting per-user.
 			char Nick[64], Ident[64], Mask[256];
-			IRC_BreakdownNick(Message, Nick, Ident, Mask);
+			IRC::BreakdownNick(Message, Nick, Ident, Mask);
 			
 			if (!strcmp(Nick, IRCConfig.Nick))
 			{ //Uhoh, it's us.
@@ -1125,13 +1129,13 @@ void NEXUS_IRC2NEXUS(const char *Message)
 				}
 
 					
-				Server_ForwardToAll(OutBuf);
+				Server::ForwardToAll(OutBuf);
 				SubStrings.StripTrailingChars(OutBuf, "\r\n");
 				puts(OutBuf);
 				
-				IRC_Disconnect(); //Close the IRC server connection.
-				Server_SendQuit(-1, "IRC server sent NEXUS a QUIT command."); //Tell all clients to quit.
-				Net_ShutdownServer(); //Bring down the NEXUS server.
+				IRC::Disconnect(); //Close the IRC server connection.
+				Server::SendQuit(-1, "IRC server sent NEXUS a QUIT command."); //Tell all clients to quit.
+				Net::ShutdownServer(); //Bring down the NEXUS server.
 				Exit(1);
 			}
 			
@@ -1145,12 +1149,12 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			//Now forward to all our users.
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
-			Server_ForwardToAll(OutBuf);
+			Server::ForwardToAll(OutBuf);
 		}
 	}
 }
 
-static void NEXUS_HandleClientInterface(const char *const Message, struct ClientListStruct *Client)
+static void NEXUS::HandleClientInterface(const char *const Message, struct ClientListStruct *Client)
 { //Processes commands sent to our control nickname.
 	const char *Argument = NULL;
 	char PrimaryCommand[64];
@@ -1171,23 +1175,23 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		//Confirm the shutdown.
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Shutting down NEXUS.\r\n",
 				IRCConfig.Nick);
-		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		
 		
 		//Tell all clients to quit.
-		Server_SendQuit(-1, "A quit command was received from NEXUS' control nickname.");
+		Server::SendQuit(-1, "A quit command was received from NEXUS' control nickname.");
 		
 		//Disconnect from the IRC server.
-		IRC_Disconnect();
+		IRC::Disconnect();
 		
 		//Bring down the NEXUS server.
-		Net_ShutdownServer();
+		Net::ShutdownServer();
 		
 		//Clean up some stuff.
-		Scrollback_Shutdown();
-		Ignore_Shutdown();
-		State_ShutdownChannelList();
-		Server_ClientList_Shutdown();
+		Scrollback::Shutdown();
+		Ignore::Shutdown();
+		State::ShutdownChannelList();
+		Server::ClientList::Shutdown();
 		
 		Exit(0);
 	}
@@ -1205,7 +1209,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		//List all channels we are in.
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of channels NEXUS is in:\r\n",
 				IRCConfig.Nick);
-		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		
 		std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
 		
@@ -1213,13 +1217,13 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 		{
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u] %s\r\n",
 					IRCConfig.Nick, Inc, ChannelCount, Iter->second.GetChannelName());
-			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		}
 
 		//List clients and their info.		
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of clients connected to this NEXUS:\r\n",
 				IRCConfig.Nick);
-		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		
 		std::list<struct ClientListStruct>::iterator ClientIter = ClientListCore.begin();
 		for (Inc = 1; ClientIter != ClientListCore.end(); ++ClientIter, ++Inc)
@@ -1227,12 +1231,12 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u]%s Ident: \"%s\" IP: \"%s\"\r\n",
 					IRCConfig.Nick, Inc, ClientCount, &*ClientIter == Client ? " (YOU)" : "",
 					ClientIter->Ident, ClientIter->IP);
-			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		}
 		
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :End of status report.\r\n",
 				IRCConfig.Nick);
-		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		return;
 	}
 	else if (!strcmp(PrimaryCommand, "ignore"))
@@ -1268,7 +1272,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 					break;
 				default:
 					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Missing operator for blockages list.\r\n", IRCConfig.Nick);
-					Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+					Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 					break;
 			}
 			
@@ -1295,24 +1299,24 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 			else
 			{
 				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Bad ignore flag \"%s\"\r\n", IRCConfig.Nick, FlagData);
-				Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 				continue;
 			}
 			
 			
 			
-			if (Ignore_Modify(VHost, Adding, Flag))
+			if (Ignore::Modify(VHost, Adding, Flag))
 			{
 				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Ignore flag %s %s for %s\r\n", IRCConfig.Nick,
 						FlagData, Adding ? "enabled" : "disabled", VHost);
-				Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 				continue;
 			}
 			else
 			{
 				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Failed to %s flag %s for %s\r\n", IRCConfig.Nick,
 						Adding ? "enable" : "disable", FlagData, VHost);
-				Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 				continue;
 			}
 		}
@@ -1322,7 +1326,7 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 	else
 	{
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Command unrecognized.\r\n", IRCConfig.Nick);
-		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		return;
 	}
 }

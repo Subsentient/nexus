@@ -13,7 +13,7 @@
 
 struct ScrollbackList *ScrollbackCore;
 
-struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, const char *Target, const time_t Time)
+struct ScrollbackList *Scrollback::AddMsg(const char *Msg, const char *Origin, const char *Target, const time_t Time)
 {
 	struct ScrollbackList *Worker = ScrollbackCore;
 	
@@ -51,7 +51,7 @@ struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, co
 	return Worker;
 }
 
-void Scrollback_DelMsg(struct ScrollbackList *ToDel)
+void Scrollback::DelMsg(struct ScrollbackList *ToDel)
 {
 	
 	//First we must delete the objects for this thing.
@@ -82,7 +82,7 @@ void Scrollback_DelMsg(struct ScrollbackList *ToDel)
 	}
 }
 
-void Scrollback_Shutdown(void)
+void Scrollback::Shutdown(void)
 {
 	struct ScrollbackList *Worker = ScrollbackCore, *Next;
 	
@@ -101,7 +101,7 @@ void Scrollback_Shutdown(void)
 	ScrollbackCore = NULL;
 }
 
-void Scrollback_Reap(void)
+void Scrollback::Reap(void)
 {
 	//Reap expired scrollback.
 	const time_t TimeCompare = time(NULL);
@@ -111,7 +111,7 @@ SBLoop:
 	{
 		if (SBWorker->Time + NEXUSConfig.ScrollbackKeepTime < TimeCompare)
 		{ //Expired. Reap it.
-			Scrollback_DelMsg(SBWorker);
+			Scrollback::DelMsg(SBWorker);
 			goto SBLoop;
 		}
 	}

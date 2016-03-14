@@ -20,8 +20,12 @@ struct IgnoreList
 
 
 //Functions
-bool Ignore_Check(const char *Message, const unsigned WhatToCheck);
-bool Ignore_Check_Separate(const char *const Nick, const char *const Ident, const char *const Mask, const unsigned WhatToCheck);
-void Ignore_Shutdown(void);
-bool Ignore_Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange);
-bool Ignore_Add(const char *Message, const unsigned WhatToBlock);
+namespace Ignore
+{
+	bool Check(const char *Message, const unsigned WhatToCheck);
+	bool Check_Separate(const char *const Nick, const char *const Ident, const char *const Mask, const unsigned WhatToCheck);
+	void Shutdown(void);
+	bool Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange);
+	bool Add(const char *Message, const unsigned WhatToBlock);
+}
+	
