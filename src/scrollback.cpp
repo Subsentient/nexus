@@ -13,7 +13,7 @@
 
 struct ScrollbackList *ScrollbackCore;
 
-struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, const char *Target, time_t Time)
+struct ScrollbackList *Scrollback_AddMsg(const char *Msg, const char *Origin, const char *Target, const time_t Time)
 {
 	struct ScrollbackList *Worker = ScrollbackCore;
 	

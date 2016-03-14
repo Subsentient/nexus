@@ -212,7 +212,7 @@ bool IRC_GetMessageData(const char *Message, char *OutData)
 }
 
 
-bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientList *const Client)
+bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientListStruct *const Client)
 { //Changes a message's origin to the client's.
 	const char *Jump = strchr(InStream, ' ');
 	

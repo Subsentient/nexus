@@ -209,12 +209,12 @@ bool Net_Close(const int Descriptor)
 
 void Net_ShutdownServer(void)
 {
-	struct ClientList *Worker = ClientListCore;
+	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
 	
 	//Close all connections to clients.
-	for (; Worker; Worker = Worker->Next)
+	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		Net_Close(Worker->Descriptor);
+		Net_Close(Iter->Descriptor);
 	}
 	
 	Server_ClientList_Shutdown(); //Free list of clients.

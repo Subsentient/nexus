@@ -23,7 +23,7 @@
 #include "ignore.h"
 
 //Prototypes
-static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client);
+static void NEXUS_HandleClientInterface(const char *const Message, struct ClientListStruct *Client);
 
 //Globals
 static fd_set DescriptorSet;
@@ -57,7 +57,7 @@ void MasterLoop(void)
 				}
 				
 				
-				struct ClientList *Client = Server_ClientList_Lookup(Inc);
+				struct ClientListStruct *Client = Server_ClientList_Lookup(Inc);
 				
 				//Not a whole lot we can do.
 				if (!Client) continue;
@@ -80,7 +80,7 @@ void MasterLoop(void)
 			
 			if (Inc == ServerDescriptor)
 			{ //A client wants to join us.
-				struct ClientList *const Client = Server_AcceptLoop();
+				struct ClientListStruct *const Client = Server_AcceptLoop();
 				if (!Client) continue;
 				
 				NEXUS_DescriptorSet_Add(Client->Descriptor);
@@ -116,7 +116,7 @@ void MasterLoop(void)
 			}
 			else
 			{ //Client wants something.
-				struct ClientList *Client = Server_ClientList_Lookup(Inc);
+				struct ClientListStruct *Client = Server_ClientList_Lookup(Inc);
 				
 				if (!Client)
 				{
@@ -430,7 +430,7 @@ int main(int argc, char **argv)
 }
 
 /*Processes data from a client and forwards it to the IRC server.*/
-void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
+void NEXUS_NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
 {
 	const enum ServerMessageType MsgType = Server_GetMessageType(Message);
 	
@@ -459,7 +459,6 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_PRIVMSG:
 		{ //Some clients don't group our own speech correctly for PMs, so do this for channels only.
-			struct ClientList *Worker = ClientListCore;
 			const char *Search = strstr(Message, "PRIVMSG ");
 			char Target[64], Compare[64] = CONTROL_NICKNAME;
 			const char *PassOn = NULL;
@@ -495,12 +494,13 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 			if (*Search != '#') goto ForwardVerbatim;
 			
 			//We need to make all text reach the other client.
-			for (; Worker; Worker = Worker->Next)
+			std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
+			for (; Iter != ClientListCore.end(); ++Iter)
 			{
-				if (Worker == Client) continue; //Don't send to the one who just sent this.
+				if (&*Iter == Client) continue; //Don't send to the one who just sent this.
 				
 				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Message);
-				Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
+				Net_Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
 			}
 			
 			//Now we want to add it to our scrollback.
@@ -510,7 +510,7 @@ void NEXUS_NEXUS2IRC(const char *Message, struct ClientList *const Client)
 		}
 		case SERVERMSG_WHO:
 		{ //Only allow one client to spam WHO.
-			if (Client != ClientListCore) break;
+			if (Client != &*ClientListCore.begin()) break;
 			else
 			{
 				//Turn off throttling here because it can bog things up pretty bad.
@@ -857,7 +857,6 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			char NickTest[64];
 			unsigned Inc = 0;
 			const char *Test = Message + 1; //Skip past the ':' at the start.
-			struct ClientList *Worker = ClientListCore;
 			
 			for (; Test[Inc] != '!' && Test[Inc] != ' ' && Test[Inc] != '\0' && Inc < sizeof NickTest - 1; ++Inc)
 			{ //Copy in the nick for this join/part message.
@@ -867,12 +866,14 @@ void NEXUS_IRC2NEXUS(const char *Message)
 			
 			if (!strcmp(NickTest, IRCConfig.Nick)) //This is our nick.
 			{ //Since it's our nick, we gotta alter it so that the IP and ident match the client's.
-				for (; Worker; Worker = Worker->Next)
+				std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
+				
+				for (; Iter != ClientListCore.end(); ++Iter)
 				{ //Rebuild so it matches their ident and IP.
-					if (IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, Worker))
+					if (IRC_AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, &*Iter))
 					{ //If we fail to alter the origin just don't send it.
 						strncat(OutBuf, "\r\n", sizeof OutBuf - strlen(OutBuf) - 2);
-						Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
+						Net_Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
 					}
 				}
 				
@@ -1149,7 +1150,7 @@ void NEXUS_IRC2NEXUS(const char *Message)
 	}
 }
 
-static void NEXUS_HandleClientInterface(const char *const Message, struct ClientList *Client)
+static void NEXUS_HandleClientInterface(const char *const Message, struct ClientListStruct *Client)
 { //Processes commands sent to our control nickname.
 	const char *Argument = NULL;
 	char PrimaryCommand[64];
@@ -1192,15 +1193,14 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 	}
 	else if (!strcmp(PrimaryCommand, "status")) //They want a list of clients and whatnot.
 	{
-		struct ClientList *ClientWorker = ClientListCore;
 		
 		const unsigned ChannelCount = ChannelListCore.size();
-		unsigned ClientCount = 0, Inc = 1;
+		unsigned Inc = 1;
 		
 		//Count channels.
 		
 		//Count clients.
-		for (; ClientWorker; ClientWorker = ClientWorker->Next, ++ClientCount);
+		const unsigned ClientCount = ClientListCore.size();
 		
 		//List all channels we are in.
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of channels NEXUS is in:\r\n",
@@ -1221,11 +1221,12 @@ static void NEXUS_HandleClientInterface(const char *const Message, struct Client
 				IRCConfig.Nick);
 		Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		
-		for (ClientWorker = ClientListCore, Inc = 1; ClientWorker != NULL; ClientWorker = ClientWorker->Next, ++Inc)
+		std::list<struct ClientListStruct>::iterator ClientIter = ClientListCore.begin();
+		for (Inc = 1; ClientIter != ClientListCore.end(); ++ClientIter, ++Inc)
 		{
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u]%s Ident: \"%s\" IP: \"%s\"\r\n",
-					IRCConfig.Nick, Inc, ClientCount, ClientWorker == Client ? " (YOU)" : "",
-					ClientWorker->Ident, ClientWorker->IP);
+					IRCConfig.Nick, Inc, ClientCount, &*ClientIter == Client ? " (YOU)" : "",
+					ClientIter->Ident, ClientIter->IP);
 			Net_Write(Client->Descriptor, OutBuf, strlen(OutBuf));
 		}
 		

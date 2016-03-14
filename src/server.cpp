@@ -11,6 +11,8 @@
 #include <winsock2.h>
 #endif 
 
+#include <list>
+
 #include "server.h"
 #include "netcore.h"
 #include "config.h"
@@ -24,8 +26,8 @@
 /**This file has our IRC pseudo-server that we run ourselves and its interaction with clients.**/
 
 //Globals
-struct ClientList *ClientListCore;
-struct ClientList *CurrentClient, *PreviousClient;
+std::list<struct ClientListStruct> ClientListCore;
+struct ClientListStruct *CurrentClient, *PreviousClient;
 
 //Prototypes
 static void Server_SendChannelNamesList(const class ChannelList *const Channel, const int ClientDescriptor);
@@ -33,128 +35,65 @@ static void Server_SendChannelRejoin(const class ChannelList *const Channel, con
 
 //Functions
 
-struct ClientList *Server_ClientList_Lookup(const int Descriptor)
+struct ClientListStruct *Server_ClientList_Lookup(const int Descriptor)
 {
-	struct ClientList *Worker = ClientListCore;
-	
-	for (; Worker; Worker = Worker->Next)
+	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
+
+	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		if (Worker->Descriptor == Descriptor)
-		{
-			return Worker;
-		}
+		if (Iter->Descriptor == Descriptor);
+		return &*Iter; //Not used to doing this kind of weird shit. That'd seem really stupid and redundant in C, where Iter would be a pointer.
 	}
-	
 	return NULL;
 }
 
-struct ClientList *Server_ClientList_Add(const struct ClientList *const InStruct)
+struct ClientListStruct *Server_ClientList_Add(const struct ClientListStruct *const InStruct)
 {
-	struct ClientList *Worker = ClientListCore, *TempNext, *TempPrev;
-	
-	if (!ClientListCore)
-	{
-		Worker = ClientListCore = (struct ClientList*)calloc(1, sizeof(struct ClientList)); //use calloc to zero it out
-	}
-	else
-	{
-		while (Worker->Next) Worker = Worker->Next;
-		Worker->Next = (struct ClientList*)calloc(1, sizeof(struct ClientList));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
-	}
-	
-	TempNext = Worker->Next;
-	TempPrev = Worker->Prev;
-	
-	*Worker = *InStruct;
-	
-	Worker->Next = TempNext;
-	Worker->Prev = TempPrev;
-	
-	return Worker;
+	ClientListCore.push_front(*InStruct);
+	return &*ClientListCore.begin();
 }
 
 
 void Server_ClientList_Shutdown(void)
 {
-	struct ClientList *Worker = ClientListCore, *Next;
-
-	for (; Worker; Worker = Next)
-	{
-		Next = Worker->Next;
-		free(Worker);
-	}
+	ClientListCore.clear();
 	
-	ClientListCore = NULL;
 	PreviousClient = NULL;
 	CurrentClient = NULL;
 }
 
 bool Server_ClientList_Del(const int Descriptor)
 {
-	struct ClientList *Worker = ClientListCore;
+	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
 	
-	if (!ClientListCore) return false;
-	
-	for (; Worker; Worker = Worker->Next)
+	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		if (Worker->Descriptor == Descriptor)
-		{ //Match.
+		if (Iter->Descriptor == Descriptor)
+		{
+			if (&*Iter == CurrentClient) CurrentClient = reinterpret_cast<struct ClientListStruct*>(-1);
+			if (&*Iter == PreviousClient) PreviousClient = reinterpret_cast<struct ClientListStruct*>(-1);
 			
-			if (Worker == PreviousClient)
-			{
-				PreviousClient = (struct ClientList*)-1; //We do -1 so it still tests as unequal for any new comparisons.
-			}
-			if (Worker == CurrentClient)
-			{
-				CurrentClient = (struct ClientList*)-1;
-			}
-			
-			if (Worker == ClientListCore)
-			{
-				if (Worker->Next)
-				{ //We're the first one but there are others ahead of us.
-					ClientListCore = Worker->Next;
-					ClientListCore->Prev = NULL;
-					free(Worker);
-				}
-				else
-				{ //Just us.
-					free(Worker);
-					ClientListCore = NULL;
-				}
-			}
-			else
-			{
-				Worker->Prev->Next = Worker->Next;
-				if (Worker->Next) Worker->Next->Prev = Worker->Prev;
-				free(Worker);
-			}
-			
+			ClientListCore.erase(Iter);
 			return true;
 		}
 	}
-	
 	return false;
 }
 
 bool Server_ForwardToAll(const char *const InStream)
 { //This function sends the provided text stream to all clients. Very simple.
-	struct ClientList *Worker = ClientListCore;
+	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
 	
-	if (!Worker) return false;
-	
-	for (; Worker; Worker = Worker->Next)
+	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		Net_Write(Worker->Descriptor, InStream, strlen(InStream));
+		Net_Write(Iter->Descriptor, InStream, strlen(InStream));
 	}
 	return true;
 }
 
 bool Server_NukeClient(const int Descriptor)
 { //Close the descriptor, remove from select() tracking, and purge him from our minds.
-	struct ClientList *Client = Server_ClientList_Lookup(Descriptor);
+	struct ClientListStruct *Client = Server_ClientList_Lookup(Descriptor);
 
 	if (!Client) return false;
 	
@@ -168,37 +107,36 @@ bool Server_NukeClient(const int Descriptor)
 
 void Server_SendQuit(const int Descriptor, const char *const Reason)
 { //Tells all clients or just one client to quit
-	struct ClientList *Worker = ClientListCore;
+	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
 	char OutBuf[2048];
 	
-	for (; Worker; Worker = Worker->Next)
+	for (; Iter != ClientListCore.end(); ++Iter)
 	{
 		//If not on "everyone" mode we check if the descriptor matches.
-		if (Descriptor != -1 && Descriptor != Worker->Descriptor) continue; 
+		if (Descriptor != -1 && Descriptor != Iter->Descriptor) continue; 
 		
 		if (Reason)
 		{
-			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :%s\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP, Reason);
+			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :%s\r\n", IRCConfig.Nick, Iter->Ident, Iter->IP, Reason);
 		}
 		else
 		{
-			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Worker->Ident, Worker->IP);
+			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Iter->Ident, Iter->IP);
 		}
-		Net_Write(Worker->Descriptor, OutBuf, strlen(OutBuf));
+		Net_Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
 	}
 }
 
 void Server_SendIRCWelcome(const int ClientDescriptor)
 {
 	char OutBuf[2048];
-	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor), *CWorker = NULL;
+	struct ClientListStruct *Client = Server_ClientList_Lookup(ClientDescriptor);
 	std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
 	
-	int ClientCount = 0;
+	const int ClientCount = ClientListCore.size();
 	
 	if (!Client) return;
 	
-	for (CWorker = ClientListCore; CWorker; CWorker = CWorker->Next) ++ClientCount;
 	
 	//First thing we send is our greeting, telling them they're connected OK.
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 001 %s :NEXUS is forwarding you to server %s:%hu\r\n",
@@ -344,7 +282,7 @@ SendBegin:
 static void Server_SendChannelRejoin(const class ChannelList *const Channel, const int ClientDescriptor)
 { //Sends the list of channels we are in to the client specified.
 	char OutBuf[2048];
-	struct ClientList *Client = Server_ClientList_Lookup(ClientDescriptor);
+	struct ClientListStruct *Client = Server_ClientList_Lookup(ClientDescriptor);
 	
 	if (!Client) return;
 	
@@ -367,11 +305,11 @@ static void Server_SendChannelRejoin(const class ChannelList *const Channel, con
 	Server_SendChannelNamesList(Channel, ClientDescriptor);
 }
 
-struct ClientList *Server_AcceptLoop(void)
+struct ClientListStruct *Server_AcceptLoop(void)
 {
-	struct ClientList TempClient;
+	struct ClientListStruct TempClient;
 	char InBuf[2048];
-	struct ClientList *Client = NULL;
+	struct ClientListStruct *Client = NULL;
 	bool UserProvided = false, NickProvided = false;
 	bool PasswordProvided = false;
 	

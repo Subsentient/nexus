@@ -42,7 +42,7 @@ void IRC_Pong(const char *Param);
 bool IRC_Disconnect(void);
 enum IRCMessageType IRC_GetMessageType(const char *InStream_);
 bool IRC_GetMessageData(const char *Message, char *OutData);
-bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientList *const Client);
+bool IRC_AlterMessageOrigin(const char *InStream, char *OutStream, const unsigned OutStreamSize, const struct ClientListStruct *const Client);
 bool IRC_BreakdownNick(const char *Message, char *NickOut, char *IdentOut, char *MaskOut);
 
 #endif //__IRC_HEADER__
