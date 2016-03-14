@@ -15,7 +15,7 @@
 #include "server.h"
 
 #define NEXUS_VERSION "0.1"
-#define CONTROL_NICKNAME "NEXUS::CONTROL"
+#define CONTROL_NICKNAME "NEXUS_CONTROL"
 namespace NEXUS
 {
 	void IRC2NEXUS(const char *Message);
