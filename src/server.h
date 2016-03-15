@@ -18,6 +18,10 @@ struct ClientListStruct
 	char IP[128]; //His IP address.
 	char OriginalNick[64]; //The nick they had before we told them to change it.
 	char Ident[64]; //They get to keep their ident and we will call them by it.
+	
+	
+	///Safe function: Adds \r\n to end of the string before sending if we do not.
+	bool SendLine(const char *const String) const;
 };
 
 enum ServerMessageType

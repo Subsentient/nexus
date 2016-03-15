@@ -587,7 +587,8 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 			if (!Start) break;
 			
 			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " PONG " NEXUS_FAKEHOST " %s\r\n", Start);
-			Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			
+			Client->SendLine(OutBuf);
 			break;
 		}
 		case SERVERMSG_QUIT:
@@ -1175,7 +1176,7 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		//Confirm the shutdown.
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Shutting down NEXUS.\r\n",
 				IRCConfig.Nick);
-		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 		
 		
 		//Tell all clients to quit.
@@ -1209,7 +1210,7 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		//List all channels we are in.
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of channels NEXUS is in:\r\n",
 				IRCConfig.Nick);
-		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 		
 		std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
 		
@@ -1217,13 +1218,13 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		{
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u] %s\r\n",
 					IRCConfig.Nick, Inc, ChannelCount, Iter->second.GetChannelName());
-			Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			Client->SendLine(OutBuf);
 		}
 
 		//List clients and their info.		
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :List of clients connected to this NEXUS:\r\n",
 				IRCConfig.Nick);
-		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 		
 		std::list<struct ClientListStruct>::iterator ClientIter = ClientListCore.begin();
 		for (Inc = 1; ClientIter != ClientListCore.end(); ++ClientIter, ++Inc)
@@ -1231,12 +1232,12 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 			snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :[%u/%u]%s Ident: \"%s\" IP: \"%s\"\r\n",
 					IRCConfig.Nick, Inc, ClientCount, &*ClientIter == Client ? " (YOU)" : "",
 					ClientIter->Ident, ClientIter->IP);
-			Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			Client->SendLine(OutBuf);
 		}
 		
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :End of status report.\r\n",
 				IRCConfig.Nick);
-		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 		return;
 	}
 	else if (!strcmp(PrimaryCommand, "ignore"))
@@ -1272,7 +1273,7 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 					break;
 				default:
 					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Missing operator for blockages list.\r\n", IRCConfig.Nick);
-					Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+					Client->SendLine(OutBuf);
 					break;
 			}
 			
@@ -1299,7 +1300,7 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 			else
 			{
 				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Bad ignore flag \"%s\"\r\n", IRCConfig.Nick, FlagData);
-				Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				Client->SendLine(OutBuf);
 				continue;
 			}
 			
@@ -1309,14 +1310,14 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 			{
 				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Ignore flag %s %s for %s\r\n", IRCConfig.Nick,
 						FlagData, Adding ? "enabled" : "disabled", VHost);
-				Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				Client->SendLine(OutBuf);
 				continue;
 			}
 			else
 			{
 				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Failed to %s flag %s for %s\r\n", IRCConfig.Nick,
 						Adding ? "enable" : "disable", FlagData, VHost);
-				Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+				Client->SendLine(OutBuf);
 				continue;
 			}
 		}
@@ -1326,7 +1327,7 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 	else
 	{
 		snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Command unrecognized.\r\n", IRCConfig.Nick);
-		Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 		return;
 	}
 }

@@ -12,6 +12,7 @@
 #endif 
 
 #include <list>
+#include <string>
 
 #include "server.h"
 #include "netcore.h"
@@ -32,7 +33,7 @@ struct ClientListStruct *CurrentClient, *PreviousClient;
 //Prototypes
 namespace Server
 {
-	static void SendChannelNamesList(const class ChannelList *const Channel, const int ClientDescriptor);
+	static void SendChannelNamesList(const class ChannelList *const Channel, struct ClientListStruct *Client);
 	static void SendChannelRejoin(const class ChannelList *const Channel, const int ClientDescriptor);
 	static void SendIRCWelcome(const int ClientDescriptor);
 }
@@ -144,7 +145,8 @@ static void Server::SendIRCWelcome(const int ClientDescriptor)
 	//First thing we send is our greeting, telling them they're connected OK.
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 001 %s :NEXUS is forwarding you to server %s:%hu\r\n",
 			IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum); //Putting IRCConfig.Nick here is the same as sending a NICK command.
-	Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+			
+	Client->SendLine(OutBuf);
 	
 	//Tell them to join all channels we are already in.
 	for (; Iter != ChannelListCore.end(); ++Iter)
@@ -161,21 +163,22 @@ static void Server::SendIRCWelcome(const int ClientDescriptor)
 	//Send the beginning.
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 375 %s :Welcome to NEXUS " NEXUS_VERSION
 			". You are being forwarded to \"%s:%hu\".\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);
-	Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	
+	Client->SendLine(OutBuf);
 	
 	//For dumb bots that connect, make it abundantly clear what their nick should be.
 	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s NICK :%s\r\n", Client->OriginalNick, Client->Ident, Client->IP, IRCConfig.Nick);
-	Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	Client->SendLine(OutBuf);
 	
 	//Send the middle.
 	snprintf(OutBuf, sizeof OutBuf,
 			":" NEXUS_FAKEHOST " 372 %s :There are currently %d other instances connected to this NEXUS server.\r\n",
 			IRCConfig.Nick, ClientCount - 1);
-	Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	Client->SendLine(OutBuf);
 	
 	//Send the end.
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 376 %s :End of MOTD.\r\n", IRCConfig.Nick);
-	Net::Write(Client->Descriptor, OutBuf, strlen(OutBuf));
+	Client->SendLine(OutBuf);
 	
 	//Send all scrollback.
 	struct ScrollbackList *SWorker = ScrollbackCore;
@@ -221,12 +224,12 @@ static void Server::SendIRCWelcome(const int ClientDescriptor)
 		}
 		
 		//Now send it to the client.
-		Net::Write(Client->Descriptor, ScrollBuf, strlen(ScrollBuf));
+		Client->SendLine(ScrollBuf);
 	}
 	
 }
 
-static void Server::SendChannelNamesList(const class ChannelList *const Channel, const int ClientDescriptor)
+static void Server::SendChannelNamesList(const class ChannelList *const Channel, struct ClientListStruct *Client)
 {
 	char OutBuf[2048];
 	unsigned Ticker = 1;
@@ -234,17 +237,9 @@ static void Server::SendChannelNamesList(const class ChannelList *const Channel,
 	std::map<std::string, struct UserStruct> &UserListRef = Channel->GetUserList();
 	std::map<std::string, struct UserStruct>::iterator Iter = UserListRef.begin();
 	
-	//Hack: Make sure OUR modes are correctly sent.
-	struct UserStruct *Us = Channel->GetUser(IRCConfig.Nick);
-	if (Us->Modes != 0)
-	{
-		snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " MODE %s +%c %s\r\n", Channel->GetChannelName(), State::UserModes_Get_Mode2Symbol(Us->Modes), IRCConfig.Nick);
-		Net::Write(ClientDescriptor, OutBuf, strlen(OutBuf));
-	}
 SendBegin:
-	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 353 %s * %s :", IRCConfig.Nick, Channel->GetChannelName());
 	
-	Net::Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+	std::string OutString = std::string(":" NEXUS_FAKEHOST " 353 ") + IRCConfig.Nick + " * " + Channel->GetChannelName() + " :";
 	
 	for (Ticker = 1; Iter != UserListRef.end(); ++Iter, ++Ticker)
 	{
@@ -255,30 +250,32 @@ SendBegin:
 		
 		if (Sym)
 		{
-			Net::Write(ClientDescriptor, &Sym, 1);
+			OutString += Sym;
 		}
 		
-		Net::Write(ClientDescriptor, Worker->Nick.c_str(), strlen(Worker->Nick.c_str()));
+		OutString += Worker->Nick;
+
+		std::map<std::string, struct UserStruct>::iterator TempIter = Iter;
+		++TempIter;
 		
-		if (++Iter == UserListRef.end() || Ticker == 20)
+		if (Ticker == 20 || TempIter == UserListRef.end())
 		{
-			Net::Write(ClientDescriptor, "\r\n", 2);
+			OutString += "\r\n";
+			Client->SendLine(OutString.c_str());
 			
-			if (Iter == UserListRef.end())
+			if (TempIter != UserListRef.end())
 			{
-				--Iter;
+				goto SendBegin;
 			}
-			else goto SendBegin;
 		}
 		else
 		{
-			--Iter;
-			Net::Write(ClientDescriptor, " ", 1);
+			OutString += " ";
 		}
 	}
 	
 	snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 366 %s %s :End of /NAMES list.\r\n", IRCConfig.Nick, Channel->GetChannelName());
-	Net::Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+	Client->SendLine(OutBuf);
 	
 }
 
@@ -291,21 +288,21 @@ static void Server::SendChannelRejoin(const class ChannelList *const Channel, co
 	
 	//Send the join command.
 	snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s JOIN %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Channel->GetChannelName());
-	Net::Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+	Client->SendLine(OutBuf);
 	
 	//Send the topic and the setter of the topic.
 	if (*Channel->GetTopic() && *Channel->GetWhoSetTopic() && Channel->GetWhenSetTopic() != 0)
 	{
 		snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 332 %s %s :%s\r\n", IRCConfig.Nick, Channel->GetChannelName(), Channel->GetTopic());
-		Net::Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 		
 		snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 333 %s %s %s %u\r\n", IRCConfig.Nick,
 				Channel->GetChannelName(), Channel->GetWhoSetTopic(), Channel->GetWhenSetTopic());
-		Net::Write(ClientDescriptor, OutBuf, strlen(OutBuf));
+		Client->SendLine(OutBuf);
 	}
 	
 	//Send list of users.
-	Server::SendChannelNamesList(Channel, ClientDescriptor);
+	Server::SendChannelNamesList(Channel, Client);
 }
 
 struct ClientListStruct *Server::AcceptLoop(void)
@@ -444,3 +441,13 @@ enum ServerMessageType Server::GetMessageType(const char *InStream_)
 	else return SERVERMSG_UNKNOWN;
 }
 
+bool ClientListStruct::SendLine(const char *const String) const
+{
+	std::string Out = String;
+	if (!SubStrings.EndsWith("\r\n", Out.c_str()))
+	{
+		Out += "\r\n";
+	}
+	
+	return Net::Write(this->Descriptor, Out.c_str(), Out.length());
+}
