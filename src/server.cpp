@@ -45,8 +45,10 @@ struct ClientListStruct *Server::ClientList::Lookup(const int Descriptor)
 
 	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		if (Iter->Descriptor == Descriptor);
-		return &*Iter; //Not used to doing this kind of weird shit. That'd seem really stupid and redundant in C, where Iter would be a pointer.
+		if (Iter->Descriptor == Descriptor)
+		{
+			return &*Iter; //Not used to doing this kind of weird shit. That'd seem really stupid and redundant in C, where Iter would be a pointer.
+		}
 	}
 	return NULL;
 }
