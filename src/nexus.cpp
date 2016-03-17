@@ -41,7 +41,43 @@ void NEXUS::ProcessIdleActions(void)
 	{
 		struct ClientListStruct *Client = &*Iter;
 		
-		
+		if (!Client->WaitingForPing)
+		{
+			if (Client->PingSentTime + NEXUSConfig.ClientPingInterval <= time(NULL))
+			{ //It's time to ping them. Don't send them data until we get a response.
+				Client->Ping();
+				continue;
+			}
+			else
+			{ //They are up-to-date on pings, send them all data we have queued for them.
+				if (!Client->WriteQueue.empty() && !Client->FlushSendBuffer())
+				{ //Error sending them their data. Time to let them die.
+					std::list<struct ClientListStruct>::iterator NewIter = Iter;
+					++NewIter;
+					
+					Net::Close(Client->Descriptor);
+					NEXUS::DescriptorSet_Del(Client->Descriptor);
+					Server::ClientList::Del(Client->Descriptor);
+					
+					Iter = NewIter;
+				}
+			}
+		}
+		else
+		{ //We need to check if they have pinged out.
+			if (Client->PingSentTime + NEXUSConfig.ClientPingoutTime <= time(NULL))
+			{ //They have, it's time to say byebye.
+				std::list<struct ClientListStruct>::iterator NewIter = Iter;
+				++NewIter;
+				
+				Net::Close(Client->Descriptor);
+				NEXUS::DescriptorSet_Del(Client->Descriptor);
+				Server::ClientList::Del(Client->Descriptor);
+				
+				Iter = NewIter;
+				continue;
+			}
+		}
 	}
 }
 

@@ -29,6 +29,7 @@ private:
 	
 	//Private member functions.
 	bool WriteQueue_Pop(void);
+	bool FlushSendBuffer(void);
 public:
 	int Descriptor; //Network descriptor for this guy.
 	char IP[128]; //His IP address.
@@ -42,7 +43,6 @@ public:
 	void SendLine(const char *const String);
 	bool Ping(void);
 	bool CompletePing(void);
-	bool FlushSendBuffer(void);
 	
 	friend void NEXUS::ProcessIdleActions(void);
 	friend void NEXUS::MasterLoop(void);

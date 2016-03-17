@@ -489,24 +489,17 @@ bool ClientListStruct::CompletePing(void)
 	return true;
 }
 
-ClientListStruct::ClientListStruct(const int Descriptor, const char *IP, const char *OriginalNick, const char *Ident)
+ClientListStruct::ClientListStruct(const int InDescriptor, const char *IP, const char *OriginalNick, const char *Ident)
+	: WaitingForPing(false), PingSentTime(0), Descriptor(InDescriptor)
 {
-	//Need these zeroed out.
-	this->PingSentTime = 0;
-	this->WaitingForPing = false;
-	
-	this->Descriptor = Descriptor;
-	
 	SubStrings.Copy(this->IP, IP, sizeof this->IP);
 	SubStrings.Copy(this->OriginalNick, OriginalNick, sizeof this->OriginalNick);
 	SubStrings.Copy(this->Ident, Ident, sizeof this->Ident);
 }
 	
 ClientListStruct::ClientListStruct(void)
+	: WaitingForPing(false), PingSentTime(0), Descriptor(0)
 {
-	this->PingSentTime = 0;
-	this->WaitingForPing = false;
-	this->Descriptor = 0;
 }
 
 
