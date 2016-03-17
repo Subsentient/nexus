@@ -4,7 +4,7 @@ OBJECTS = config.o netcore.o irc.o state.o server.o nexus.o scrollback.o ignore.
 
 ifeq ($(OS),WIN)
 	CXXFLAGS += -DWIN
-	LDFLAGS = -lws2_32 
+	LDFLAGS = -lws2_32 -static
 	OUTFILE = ../NEXUS.exe
 	OBJECTS += ../win32/win.o
 endif
