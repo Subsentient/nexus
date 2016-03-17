@@ -46,10 +46,10 @@ bool Net::Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText
 	unsigned char Byte = 0;
 	unsigned char *OutStream = static_cast<unsigned char*>(OutStream_);
 	unsigned Inc = 0;
-
+	
 	do
 	{
-		Status = recv(Descriptor, (void*)&Byte, 1, 0);
+		Status = recv(Descriptor, (char*)&Byte, 1, 0);
 
 
 		*OutStream++ = Byte;
@@ -193,7 +193,7 @@ bool Net::InitServer(unsigned short PortNum)
 		return false;
 	}
 
-	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, (void*)&True, sizeof(int)); //The cast shuts up Windows compilation.
+	setsockopt(ServerDescriptor, SOL_SOCKET, SO_REUSEADDR, (const char*)&True, sizeof(int)); //The cast shuts up Windows compilation.
 
 	if (bind(ServerDescriptor, Res->ai_addr, Res->ai_addrlen) == -1)
 	{

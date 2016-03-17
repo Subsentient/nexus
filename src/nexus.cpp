@@ -251,12 +251,16 @@ int main(int argc, char **argv)
 	
 	
 	//Ignore sigpipe from send() in Net::Write()
+#ifndef WIN
 	signal(SIGPIPE, SIG_IGN);
-	
+#endif //WIN
+
 	puts("NEXUS BNC " NEXUS_VERSION "\n");
+	
 #ifndef WIN
 	bool Background = false;
-#endif
+#endif //WIN
+
 	///Process command line arguments.
 	if (argc > 1)
 	{ //Command line arguments override any values in configuration files.
