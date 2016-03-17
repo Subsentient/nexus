@@ -55,9 +55,7 @@ void NEXUS::ProcessIdleActions(void)
 					std::list<struct ClientListStruct>::iterator NewIter = Iter;
 					++NewIter;
 					
-					Net::Close(Client->Descriptor);
-					NEXUS::DescriptorSet_Del(Client->Descriptor);
-					Server::ClientList::Del(Client->Descriptor);
+					Server::NukeClient(Client->Descriptor);
 					
 					Iter = NewIter;
 				}
@@ -70,9 +68,7 @@ void NEXUS::ProcessIdleActions(void)
 				std::list<struct ClientListStruct>::iterator NewIter = Iter;
 				++NewIter;
 				
-				Net::Close(Client->Descriptor);
-				NEXUS::DescriptorSet_Del(Client->Descriptor);
-				Server::ClientList::Del(Client->Descriptor);
+				Server::NukeClient(Client->Descriptor);
 				
 				Iter = NewIter;
 				continue;
@@ -123,9 +119,7 @@ void NEXUS::MasterLoop(void)
 				//Not a whole lot we can do.
 				if (!Client) continue;
 				
-				Net::Close(Client->Descriptor);
-				NEXUS::DescriptorSet_Del(Client->Descriptor);
-				Server::ClientList::Del(Client->Descriptor);
+				Server::NukeClient(Client->Descriptor);
 				
 				//Remove it from the 'read' set if it's there.
 				if (FD_ISSET(Inc, &Set))
@@ -194,9 +188,7 @@ void NEXUS::MasterLoop(void)
 				
 				if (!NRR)
 				{ //he ded
-					Net::Close(Client->Descriptor);
-					NEXUS::DescriptorSet_Del(Client->Descriptor);
-					Server::ClientList::Del(Client->Descriptor);
+					Server::NukeClient(Client->Descriptor);
 					continue;
 				}
 				
@@ -517,9 +509,7 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 		
 			if (!*Message)
 			{ //Ded client.
-				Net::Close(Client->Descriptor);
-				NEXUS::DescriptorSet_Del(Client->Descriptor);
-				Server::ClientList::Del(Client->Descriptor);
+				Server::NukeClient(Client->Descriptor);
 				return;
 			}
 			//Append \r\n and send to IRC server.
@@ -666,9 +656,8 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 		case SERVERMSG_QUIT:
 		{
 			Server::SendQuit(Client->Descriptor, "You have sent a QUIT command to NEXUS.");
-			Net::Close(Client->Descriptor);
-			NEXUS::DescriptorSet_Del(Client->Descriptor);
-			Server::ClientList::Del(Client->Descriptor);
+
+			Server::NukeClient(Client->Descriptor);
 			break;
 		}
 	}

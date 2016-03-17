@@ -334,8 +334,7 @@ struct ClientListStruct *Server::AcceptLoop(void)
 		
 		if (!NetReadReturn)
 		{
-			Net::Close(Client->Descriptor);
-			Server::ClientList::Del(Client->Descriptor);
+			Server::NukeClient(Client->Descriptor);
 			return NULL;
 		}
 		
@@ -348,8 +347,7 @@ struct ClientListStruct *Server::AcceptLoop(void)
 			//If we want a password, WE WANT A PASSWORD. You're supposed to send PASS first, dunce!
 			if (*NEXUSConfig.ServerPassword && !PasswordProvided)
 			{
-				Net::Close(Client->Descriptor);
-				Server::ClientList::Del(Client->Descriptor);
+				Server::NukeClient(Client->Descriptor);
 				return NULL;
 			}
 			
