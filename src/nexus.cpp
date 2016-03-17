@@ -31,26 +31,47 @@ static int DescriptorMax;
 namespace NEXUS
 {
 	static void HandleClientInterface(const char *const Message, struct ClientListStruct *Client);
-	static void MasterLoop(void);
 }
 
-static void NEXUS::MasterLoop(void)
+void NEXUS::ProcessIdleActions(void)
+{
+	std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
+	
+	for (; Iter != ClientListCore.end(); ++Iter)
+	{
+		struct ClientListStruct *Client = &*Iter;
+		
+		
+	}
+}
+
+void NEXUS::MasterLoop(void)
 {
 	while (1)
 	{
 		fd_set Set = DescriptorSet;
 		fd_set ErrSet = Set;
 		
-		//select() gives you your results in Set, which is also what it initially reads from.
-		if (select(DescriptorMax + 1, &Set, NULL, &ErrSet, NULL) == -1)
+		struct timeval Timeout = { 0, 50000 }; //Microseconds. 1 million = 1 sec
+		
+		//select() gives you your results in Set, which is also what it initially reads from.		
+		switch (select(DescriptorMax + 1, &Set, NULL, &ErrSet, &Timeout))
 		{
-			fputs("Failure with select()\n", stderr);
-			Exit(1);
+			case -1:
+				fputs("Failure with select()\n", stderr);
+				Exit(1);
+				break;
+			case 0:
+			{ //Nobody wants to talk to us, so we just do our own thing.
+				goto HandleIdleStuff;
+			}
+			default:
+				break;
 		}
 
-		int Inc = 0;
+		int Inc;
 		
-		for (; Inc <= DescriptorMax; ++Inc)
+		for (Inc = 0; Inc <= DescriptorMax; ++Inc)
 		{
 			//Process errors.
 			if (FD_ISSET(Inc, &ErrSet))
@@ -134,6 +155,7 @@ static void NEXUS::MasterLoop(void)
 				
 				const bool NRR = Net::Read(Client->Descriptor, ClientBuf, sizeof ClientBuf, true);
 				
+				
 				if (!NRR)
 				{ //he ded
 					Net::Close(Client->Descriptor);
@@ -147,6 +169,10 @@ static void NEXUS::MasterLoop(void)
 			}
 
 		}
+
+	HandleIdleStuff:
+		//We're done processing any descriptors, so now we handle anything we should do in our spare time.
+		NEXUS::ProcessIdleActions();
 	}
 }
 
@@ -440,6 +466,7 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 	
 	CurrentClient = Client;
 	
+	
 	switch (MsgType)
 	{
 		char OutBuf[2048];
@@ -459,6 +486,11 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 			snprintf(OutBuf, sizeof OutBuf, "%s\r\n", Message);
 			Net::Write(IRCDescriptor, OutBuf, strlen(OutBuf));
 			
+			break;
+		}
+		case SERVERMSG_PONG:
+		{ //Client responded to our pings.
+			Client->CompletePing();
 			break;
 		}
 		case SERVERMSG_PRIVMSG:
@@ -504,7 +536,7 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 				if (&*Iter == Client) continue; //Don't send to the one who just sent this.
 				
 				snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s %s\r\n", IRCConfig.Nick, Client->Ident, Client->IP, Message);
-				Net::Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
+				Iter->SendLine(OutBuf);
 			}
 			
 			//Now we want to add it to our scrollback.
@@ -878,7 +910,8 @@ void NEXUS::IRC2NEXUS(const char *Message)
 					if (IRC::AlterMessageOrigin(Message, OutBuf, sizeof OutBuf, &*Iter))
 					{ //If we fail to alter the origin just don't send it.
 						strncat(OutBuf, "\r\n", sizeof OutBuf - strlen(OutBuf) - 2);
-						Net::Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
+						
+						Iter->SendLine(OutBuf);
 					}
 				}
 				
@@ -929,13 +962,9 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			if (Ignore::Check(Message, NEXUS_IGNORE_VISIBLE)) break;
 			
 			//Send it to everyone.
-			char *NewM = (char*)malloc(strlen(Message) + 1 + (sizeof "\r\n" - 1));
-			strcpy(NewM, Message);
-			strcat(NewM, "\r\n");
+			std::string NewM = std::string(Message) + "\r\n";
 			
-			Server::ForwardToAll(NewM);
-			
-			free(NewM);
+			Server::ForwardToAll(NewM.c_str());
 			
 			switch (MsgType)
 			{

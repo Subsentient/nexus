@@ -8,20 +8,44 @@
 #include <stdbool.h>
 
 #include <list>
+#include <string>
+#include <queue>
 
-#define NEXUS_FAKEHOST "NEXUS"
+#define NEXUS_FAKEHOST "NEXUSBNC_SERVER"
+
+namespace NEXUS
+{ //We need it for friend declarations in ClientListStruct
+	void ProcessIdleActions(void);
+	void MasterLoop(void);
+}
 
 //Structures
 struct ClientListStruct
 { //Contains information about what clients are who.
+private:
+	std::queue<std::string> WriteQueue;
+	bool WaitingForPing;
+	time_t PingSentTime; //We use this for both checking if they pinged out and checking when we should ping them next.
+	
+	//Private member functions.
+	bool WriteQueue_Pop(void);
+public:
 	int Descriptor; //Network descriptor for this guy.
 	char IP[128]; //His IP address.
 	char OriginalNick[64]; //The nick they had before we told them to change it.
 	char Ident[64]; //They get to keep their ident and we will call them by it.
 	
-	
+	ClientListStruct(void);	
+	ClientListStruct(const int Descriptor, const char *IP = "", const char *OriginalNick = "", const char *Ident = "");
+		
 	///Safe function: Adds \r\n to end of the string before sending if we do not.
-	bool SendLine(const char *const String) const;
+	void SendLine(const char *const String);
+	bool Ping(void);
+	bool CompletePing(void);
+	bool FlushSendBuffer(void);
+	
+	friend void NEXUS::ProcessIdleActions(void);
+	friend void NEXUS::MasterLoop(void);
 };
 
 enum ServerMessageType

@@ -22,5 +22,6 @@ namespace NEXUS
 	void NEXUS2IRC(const char *Message, struct ClientListStruct *const Client);
 	void DescriptorSet_Add(const int Descriptor);
 	bool DescriptorSet_Del(const int Descriptor);
+	void ProcessIdleActions(void);
 }
 #endif //__NEXUS_HEADER__

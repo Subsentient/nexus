@@ -9,6 +9,8 @@
 #include <ctype.h>
 #ifdef WIN
 #include <winsock2.h>
+#else
+#include <fcntl.h>
 #endif 
 
 #include <list>
@@ -92,7 +94,7 @@ bool Server::ForwardToAll(const char *const InStream)
 	
 	for (; Iter != ClientListCore.end(); ++Iter)
 	{
-		Net::Write(Iter->Descriptor, InStream, strlen(InStream));
+		Iter->SendLine(InStream);
 	}
 	return true;
 }
@@ -129,7 +131,8 @@ void Server::SendQuit(const int Descriptor, const char *const Reason)
 		{
 			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Iter->Ident, Iter->IP);
 		}
-		Net::Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
+		
+		Iter->SendLine(OutBuf);
 	}
 }
 
@@ -443,7 +446,71 @@ enum ServerMessageType Server::GetMessageType(const char *InStream_)
 	else return SERVERMSG_UNKNOWN;
 }
 
-bool ClientListStruct::SendLine(const char *const String) const
+bool ClientListStruct::Ping()
+{
+	std::string Out = "PING :" NEXUS_FAKEHOST "\r\n";
+	bool RetVal = false;
+#ifdef WIN
+	u_long Value = 1;
+	ioctlsocket(this->Descriptor, FIONBIO, &Value);
+#else
+	fcntl(this->Descriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
+#endif //WIN
+	
+	try
+	{
+		Net::Write(this->Descriptor, Out.c_str(), Out.length());
+	}
+	catch (Net::Errors::Any)
+	{
+		goto End;
+	}
+	
+	RetVal = true;
+	
+	this->PingSentTime = time(NULL);
+	this->WaitingForPing = true;
+End:
+#ifdef WIN
+	Value = 0;
+	ioctlsocket(this->Descriptor, FIONBIO, &Value);
+#else
+	fcntl(this->Descriptor, F_SETFL, 0);
+#endif //WIN
+	return RetVal;
+}
+
+bool ClientListStruct::CompletePing(void)
+{
+	if (!this->WaitingForPing) return false;
+	
+	this->WaitingForPing = false;
+	
+	return true;
+}
+
+ClientListStruct::ClientListStruct(const int Descriptor, const char *IP, const char *OriginalNick, const char *Ident)
+{
+	//Need these zeroed out.
+	this->PingSentTime = 0;
+	this->WaitingForPing = false;
+	
+	this->Descriptor = Descriptor;
+	
+	SubStrings.Copy(this->IP, IP, sizeof this->IP);
+	SubStrings.Copy(this->OriginalNick, OriginalNick, sizeof this->OriginalNick);
+	SubStrings.Copy(this->Ident, Ident, sizeof this->Ident);
+}
+	
+ClientListStruct::ClientListStruct(void)
+{
+	this->PingSentTime = 0;
+	this->WaitingForPing = false;
+	this->Descriptor = 0;
+}
+
+
+void ClientListStruct::SendLine(const char *const String)
 {
 	std::string Out = String;
 	if (!SubStrings.EndsWith("\r\n", Out.c_str()))
@@ -451,5 +518,53 @@ bool ClientListStruct::SendLine(const char *const String) const
 		Out += "\r\n";
 	}
 	
-	return Net::Write(this->Descriptor, Out.c_str(), Out.length());
+	this->WriteQueue.push(Out);
+}
+
+bool ClientListStruct::FlushSendBuffer(void)
+{
+	if (this->WriteQueue.empty()) return false;
+	
+	while (!this->WriteQueue.empty())
+	{
+		if (!this->WriteQueue_Pop()) return false;
+	}
+	
+	return true;
+}
+
+bool ClientListStruct::WriteQueue_Pop(void)
+{
+	if (this->WriteQueue.empty()) return false;
+	
+	bool RetVal = false;
+	std::string Out = this->WriteQueue.front();
+	
+#ifdef WIN
+	u_long Value = 1;
+	ioctlsocket(this->Descriptor, FIONBIO, &Value);
+#else
+	fcntl(this->Descriptor, F_SETFL, O_NONBLOCK); //Set nonblocking. Necessary for our single-threaded model.
+#endif //WIN
+
+	try
+	{
+		Net::Write(this->Descriptor, Out.c_str(), Out.length());
+	}
+	catch (Net::Errors::Any)
+	{ //We will probably get Net::Errors::BlockingError.
+		goto End;
+	}
+	
+	RetVal = true;
+	this->WriteQueue.pop();
+		
+End:
+#ifdef WIN
+	Value = 0;
+	ioctlsocket(this->Descriptor, FIONBIO, &Value);
+#else
+	fcntl(this->Descriptor, F_SETFL, 0);
+#endif //WIN
+	return RetVal;
 }

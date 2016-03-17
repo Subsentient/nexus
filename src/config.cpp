@@ -8,9 +8,11 @@
 #include <stdlib.h>
 
 #include <new>
+#include <string>
 
 #include "config.h"
 #include "nexus.h"
+#include "substrings/substrings.h"
 #define CONFIG_DIR ".nexus"
 #define CONFIG_FILE "NEXUS.conf"
 
@@ -24,7 +26,9 @@ struct _IRCConfig IRCConfig = { IRC_PORT_DEFAULT };
 
 struct NEXUSConfig NEXUSConfig = { NEXUS_MAXSIMUL_DEFAULT, NEXUS_PORT_DEFAULT,
 								 { '\0' }, INTERCLIENTDELAY_DEFAULT, true,
-								(60 * 60) * 8 //Eight hour default
+								(60 * 60) * 8, //Eight hour default,
+								45, //45 second pingout by default.
+								(60) * 2, //Ping clients every 2 minutes.
 								};
 
 bool Config::ReadConfig(void)
@@ -174,6 +178,18 @@ bool Config::ReadConfig(void)
 			
 			strncpy(NEXUSConfig.ServerPassword, CopyFrom, sizeof NEXUSConfig.ServerPassword - 1);
 			NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
+		}
+		else if (!SubStrings.StartsWith("NEXUS.ClientPingoutTime=", LineData))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.ClientPingoutTime=" - 1;
+			
+			NEXUSConfig.ClientPingoutTime = atoi(CopyFrom);
+		}
+		else if (!SubStrings.StartsWith("NEXUS.ClientPingInterval=", LineData))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.ClientPingInterval=" - 1;
+			
+			NEXUSConfig.ClientPingInterval = atoi(CopyFrom);
 		}
 		else if (!strncmp(LineData, "NEXUS.InterclientDelay=", sizeof "NEXUS.InterclientDelay" - 1))
 		{

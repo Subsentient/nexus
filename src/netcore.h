@@ -13,9 +13,22 @@ extern int ServerDescriptor, IRCDescriptor;
 //Function prototypes
 namespace Net
 {
+	
+	namespace Errors
+	{
+		class Any
+		{
+		};
+		class IOError : public Any
+		{
+		};
+		class BlockingError : public Any
+		{
+		};
+	}
 	bool InitServer(unsigned short PortNum);
 	bool Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText);
-	bool Write(int const ClientDescriptor, const void *InMsg, unsigned WriteSize);
+	void Write(int const ClientDescriptor, const void *InMsg, unsigned WriteSize);
 	void ShutdownServer(void);
 	bool Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_);
 	bool AcceptClient(int *const OutDescriptor, char *const OutIPAddr, unsigned IPAddrMaxLen);

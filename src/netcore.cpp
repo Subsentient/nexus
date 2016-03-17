@@ -78,7 +78,7 @@ bool Net::Read(int Descriptor, void *OutStream_, unsigned MaxLength, bool IsText
 	return true;
 }
 
-bool Net::Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
+void Net::Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 {
 	unsigned Transferred = 0, TotalTransferred = 0;
 
@@ -100,7 +100,18 @@ bool Net::Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 
 		if (Transferred == (unsigned)-1) //Don't say a word. I mean it.
 		{
-			return false;
+#ifdef WIN
+			if (WSAGetLastError() == WSAEWOULDBLOCK)
+#else
+			if (errno == EWOULDBLOCK)
+#endif //WIN
+			{
+				throw Net::Errors::BlockingError();
+			}
+			else
+			{
+				throw Net::Errors::IOError();
+			}
 		}
 
 		TotalTransferred += Transferred;
@@ -112,8 +123,6 @@ bool Net::Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 		puts(static_cast<const char*>(InMsg));
 	}
 #endif
-	
-	return true;
 }
 
 bool Net::Connect(const char *InHost, unsigned short PortNum, int *SocketDescriptor_)

@@ -23,6 +23,8 @@ struct NEXUSConfig
 	unsigned InterclientDelay; //In 10ths of seconds.
 	bool ScrollbackEnabled; //Generally true.
 	time_t ScrollbackKeepTime; //How long in seconds we keep scrollback.
+	time_t ClientPingoutTime; //How long in seconds we wait for a client to respond to our ping before we reap them.
+	time_t ClientPingInterval; //How often to ping clients, in seconds.
 };
 
 //Globals
