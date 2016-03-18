@@ -25,7 +25,8 @@ struct ClientListStruct
 private:
 	std::queue<std::string> WriteQueue;
 	bool WaitingForPing;
-	time_t PingSentTime; //We use this for both checking if they pinged out and checking when we should ping them next.
+	time_t PingSentTime; //Last time we sent them a ping.
+	time_t PingRecvTime; //Last time they responded successfully to a ping.
 	
 	//Private member functions.
 	bool WriteQueue_Pop(void);

@@ -483,20 +483,21 @@ bool ClientListStruct::CompletePing(void)
 	if (!this->WaitingForPing) return false;
 	
 	this->WaitingForPing = false;
+	this->PingRecvTime = time(NULL);
 	
 	return true;
 }
 
 ClientListStruct::ClientListStruct(const int InDescriptor, const char *IP, const char *OriginalNick, const char *Ident)
-	: WaitingForPing(false), PingSentTime(time(NULL)), Descriptor(InDescriptor)
-{ //PingSentTime is initialized with a real time so that the server doesn't send pings instantly.
+	: WaitingForPing(false), PingSentTime(0), PingRecvTime(time(NULL)), Descriptor(InDescriptor)
+{ //PingRecvTime is initialized with a real time so that the server doesn't send pings instantly.
 	SubStrings.Copy(this->IP, IP, sizeof this->IP);
 	SubStrings.Copy(this->OriginalNick, OriginalNick, sizeof this->OriginalNick);
 	SubStrings.Copy(this->Ident, Ident, sizeof this->Ident);
 }
 	
 ClientListStruct::ClientListStruct(void)
-	: WaitingForPing(false), PingSentTime(time(NULL)), Descriptor(0)
+	: WaitingForPing(false), PingSentTime(0), PingRecvTime(time(NULL)), Descriptor(0)
 {
 }
 

@@ -43,7 +43,7 @@ void NEXUS::ProcessIdleActions(void)
 		
 		if (!Client->WaitingForPing)
 		{
-			if (Client->PingSentTime + NEXUSConfig.ClientPingInterval <= time(NULL))
+			if (Client->PingRecvTime + NEXUSConfig.ClientPingInterval <= time(NULL))
 			{ //It's time to ping them. Don't send them data until we get a response.
 				Client->Ping();
 				continue;
@@ -101,9 +101,8 @@ void NEXUS::MasterLoop(void)
 				break;
 		}
 
-		int Inc;
 		
-		for (Inc = 0; Inc <= DescriptorMax; ++Inc)
+		for (int Inc = 0; Inc <= DescriptorMax; ++Inc)
 		{
 			//Process errors.
 			if (FD_ISSET(Inc, &ErrSet))
