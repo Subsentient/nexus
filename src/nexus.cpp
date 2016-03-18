@@ -50,15 +50,7 @@ void NEXUS::ProcessIdleActions(void)
 			}
 			else
 			{ //They are up-to-date on pings, send them all data we have queued for them.
-				if (!Client->WriteQueue.empty() && !Client->FlushSendBuffer())
-				{ //Error sending them their data. Time to let them die.
-					std::list<struct ClientListStruct>::iterator NewIter = Iter;
-					++NewIter;
-					
-					Server::NukeClient(Client->Descriptor);
-					
-					Iter = NewIter;
-				}
+				Client->FlushSendBuffer();
 			}
 		}
 		else
