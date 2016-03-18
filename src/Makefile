@@ -13,21 +13,29 @@ ifeq ($(DEBUG),1)
 	CXXFLAGS += -DDEBUG
 endif
 
-all:
+all: netcorecpp scrollbackcpp ignorecpp nexuscpp servercpp statecpp irccpp configcpp
 ifeq ($(OS),WIN)
 	$(MAKE) -C ../win32 all
 endif
 	$(MAKE) -C substrings static
-	$(CXX) config.cpp -c $(CXXFLAGS)
-	$(CXX) netcore.cpp -c $(CXXFLAGS)
-	$(CXX) irc.cpp -c $(CXXFLAGS)
-	$(CXX) state.cpp -c $(CXXFLAGS)
-	$(CXX) server.cpp -c $(CXXFLAGS)
-	$(CXX) nexus.cpp -c $(CXXFLAGS)
-	$(CXX) scrollback.cpp -c $(CXXFLAGS)
-	$(CXX) ignore.cpp -c $(CXXFLAGS)
 	$(CXX) $(OBJECTS) substrings/libsubstrings.a -o $(OUTFILE) $(LDFLAGS)
 
+netcorecpp:
+	$(CXX) netcore.cpp -c $(CXXFLAGS)
+scrollbackcpp:
+	$(CXX) scrollback.cpp -c $(CXXFLAGS)
+ignorecpp:
+	$(CXX) ignore.cpp -c $(CXXFLAGS)
+nexuscpp:
+	$(CXX) nexus.cpp -c $(CXXFLAGS)
+servercpp:
+	$(CXX) server.cpp -c $(CXXFLAGS)
+statecpp:
+	$(CXX) state.cpp -c $(CXXFLAGS)
+irccpp:
+	$(CXX) irc.cpp -c $(CXXFLAGS)
+configcpp:
+	$(CXX) config.cpp -c $(CXXFLAGS)
 
 clean:
 	$(MAKE) -C substrings clean
