@@ -244,7 +244,7 @@ static void Server::SendChannelNamesList(const class ChannelList *const Channel,
 	
 SendBegin:
 	
-	std::string OutString = std::string(":" NEXUS_FAKEHOST " 353 ") + IRCConfig.Nick + " * " + Channel->GetChannelName() + " :";
+	std::string OutString = std::string(":" NEXUS_FAKEHOST " 353 ") + IRCConfig.Nick + " = " + Channel->GetChannelName() + " :";
 	
 	for (Ticker = 1; Iter != UserListRef.end(); ++Iter, ++Ticker)
 	{
