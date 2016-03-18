@@ -15,6 +15,8 @@ struct ScrollbackList *ScrollbackCore;
 
 struct ScrollbackList *Scrollback::AddMsg(const char *Msg, const char *Origin, const char *Target, const time_t Time)
 {
+	if (!NEXUSConfig.ScrollbackEnabled) return NULL;
+	
 	struct ScrollbackList *Worker = ScrollbackCore;
 	
 	if (!Worker)
@@ -52,8 +54,7 @@ struct ScrollbackList *Scrollback::AddMsg(const char *Msg, const char *Origin, c
 }
 
 void Scrollback::DelMsg(struct ScrollbackList *ToDel)
-{
-	
+{	
 	//First we must delete the objects for this thing.
 	free((void*)ToDel->Msg);
 	free((void*)ToDel->Origin);
