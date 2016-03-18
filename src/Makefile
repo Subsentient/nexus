@@ -1,4 +1,4 @@
-CXXFLAGS = -std=gnu++03 -pedantic -Wall -g -O0
+CXXFLAGS = -std=gnu++98 -pedantic -Wall -g -O0
 OUTFILE = ../NEXUS
 OBJECTS = config.o netcore.o irc.o state.o server.o nexus.o scrollback.o ignore.o
 
