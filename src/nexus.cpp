@@ -635,11 +635,13 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 		}
 		case SERVERMSG_PING:
 		{ //They're doing a lag check. Give them OUR response.
-			char *Start = (char*)strchr(Message, ':');
+			char *Start = (char*)strpbrk(Message, ": ");
 			
 			if (!Start) break;
 			
-			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " PONG " NEXUS_FAKEHOST " %s\r\n", Start);
+			while (*Start == ':' || *Start == ' ') ++Start;
+			
+			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " PONG " NEXUS_FAKEHOST " :%s\r\n", Start);
 			
 			Client->SendLine(OutBuf);
 			break;
