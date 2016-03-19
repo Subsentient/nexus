@@ -1,0 +1,29 @@
+NEXUS is an IRC bouncer used to connect multiple clients to a server as the same nick and keep track of conversations while clients are offline.
+
+To compile NEXUS, download/extract source into a new directory and run 'make' in that directory. A NEXUS binary should appear.
+
+$ ./NEXUS --help
+Returns a list of command-line options you can use to run NEXUS without a config file.
+
+$ ./NEXUS --configfile=./NEXUS.conf
+Runs NEXUS using options in the specified configuration file.
+
+Sample configuration file:
+
+IRC.Server=irc.sylnt.us
+IRC.Port=6667
+IRC.Nick=dogfart
+IRC.Ident=
+IRC.RealName=dogfart
+IRC.NickServPassword=
+IRC.NickServUser=
+NEXUS.Port=6667
+NEXUS.MaxSimul=1024
+NEXUS.NEXUSPassword=
+NEXUS.ClientPingoutTime=240
+NEXUS.ClientPingInterval=60
+NEXUS.InterclientDelay=1
+NEXUS.ScrollbackEnabled=true
+NEXUS.ScrollbackKeepTime=h8
+
+The only required options are IRC.Server and IRC.Nick. All other options have defaults and may be omitted from the file. Default configuration option values are shown in the above sample, with IRC.Nick used for IRC.RealName.
