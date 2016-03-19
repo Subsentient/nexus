@@ -13,7 +13,6 @@
 #include "config.h"
 #include "nexus.h"
 #include "substrings/substrings.h"
-#define CONFIG_DIR ".nexus"
 #define CONFIG_FILE "NEXUS.conf"
 
 #define IRC_PORT_DEFAULT 6667
@@ -42,8 +41,7 @@ bool Config::ReadConfig(void)
 	
 	if (!*ConfigFilePath)
 	{
-		//We need to determine the path.
-		snprintf(ConfigFilePath, sizeof ConfigFilePath, "%s/" CONFIG_DIR "/" CONFIG_FILE, getenv("HOME"));
+		snprintf(ConfigFilePath, sizeof ConfigFilePath, CONFIG_FILE);
 	}
 	
 	if ((FD = fopen(ConfigFilePath, "r")) == NULL || stat(ConfigFilePath, &FileStat) != 0)
