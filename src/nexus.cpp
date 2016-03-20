@@ -483,7 +483,7 @@ int main(int argc, char **argv)
 }
 
 /*Processes data from a client and forwards it to the IRC server.*/
-void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client)
+void NEXUS::NEXUS2IRC(const char *const Message, struct ClientListStruct *const Client)
 {
 	const enum ServerMessageType MsgType = Server::GetMessageType(Message);
 	
@@ -575,6 +575,28 @@ void NEXUS::NEXUS2IRC(const char *Message, struct ClientListStruct *const Client
 				
 				goto ForwardVerbatim;
 			}
+		}
+		case SERVERMSG_MODE:
+		{ //We just need it for when people ask about channels.
+			const char *Derp = SubStrings.Line.WhitespaceJump(Message);
+			
+			if (*Derp != '#') //it's a channel.
+			{
+				goto ForwardVerbatim;
+			}
+			
+			//They wanted a channel's mode.
+			ChannelList *Obj = State::LookupChannel(Derp);
+			
+			if (!Obj || !*Obj->GetChannelModes() || !*Obj->GetChannelTime()) goto ForwardVerbatim;
+			
+			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 324 %s %s %s\r\n", IRCConfig.Nick, Derp, Obj->GetChannelModes());
+			Client->SendLine(OutBuf);
+			
+			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 329 %s %s %s\r\n", IRCConfig.Nick, Derp, Obj->GetChannelTime());
+			Client->SendLine(OutBuf);
+			
+			break;
 		}
 		case SERVERMSG_JOIN:
 		{ //Don't allow us to send joins for channels we are already in.
@@ -1157,6 +1179,38 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			
 			//Now write the message to each client.
 			goto ForwardVerbatim;
+		}
+		case IRCMSG_CHANMODE1: //The generic modes set on the channel. We just store it as a string, NEXUS doesn't care about channel modes. We save them for the users who request them.
+		case IRCMSG_CHANMODE2:
+		{
+			const char *StartingString = SubStrings.Line.WhitespaceJump(Message); //Now we're at the command part.
+			StartingString = SubStrings.Line.WhitespaceJump(StartingString); //Now we're at the nick part.
+			StartingString = SubStrings.Line.WhitespaceJump(StartingString); //Now we're at the channel part.
+			
+			char Chan[128];
+			char Data[128];
+			const char *Iter = StartingString;
+			
+			//Get channel.
+			SubStrings.CopyUntilC(Chan, sizeof Chan, &Iter, " ", true);
+			SubStrings.CopyUntilC(Data, sizeof Data, &Iter, " ", true);
+			
+			ChannelList *Obj = State::LookupChannel(Chan);
+			
+			if (!Obj) break; //Invalid data, don't forward to clients.
+			
+			if (MsgType == IRCMSG_CHANMODE1)
+			{
+				//Remember modes for this channel.
+				Obj->SetChannelModes(Data);
+			}
+			else
+			{
+				Obj->SetChannelTime(Data);
+			}
+			
+			goto ForwardVerbatim;
+			break;
 		}
 		case IRCMSG_QUIT:
 		{ //Handles quitting per-user.

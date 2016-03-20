@@ -33,6 +33,8 @@ private:
 	std::string WhoSetTopic; //Who set it. In the form of nick!ident@mask usually.
 	unsigned WhenSetTopic; //When the topic was set, in UNIX time.
 	std::map<std::string, struct UserStruct> UserList; //List of users and whatnot.
+	std::string ChannelModes;
+	std::string ChannelTime;
 public:
 	inline ChannelList(std::string InChannel = "", std::string InTopic = "", std::string InWhoSetTopic = "", const unsigned WhenSetTopic = 0)
 		: Channel(InChannel), Topic(InTopic), WhoSetTopic(InWhoSetTopic), WhenSetTopic(0) {}
@@ -65,6 +67,22 @@ public:
 	inline std::map<std::string, struct UserStruct> &GetUserList(void) const
 	{
 		return const_cast<ChannelList*>(this)->UserList;
+	}
+	inline const char *GetChannelModes(void)
+	{
+		return this->ChannelModes.c_str();
+	}
+	inline void SetChannelModes(const char *const NewModes)
+	{
+		this->ChannelModes = NewModes;
+	}
+	inline const char *GetChannelTime(void)
+	{
+		return this->ChannelTime.c_str();
+	}
+	inline void SetChannelTime(const char *const NewTime)
+	{
+		this->ChannelTime = NewTime;
 	}
 	void SetTopic(const char *InTopic = NULL);
 	void SetWhoSetTopic(const char *In = NULL);
