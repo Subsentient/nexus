@@ -24,4 +24,21 @@ namespace NEXUS
 	bool DescriptorSet_Del(const int Descriptor);
 	void ProcessIdleActions(void);
 }
+
+namespace Util
+{
+	inline bool IsChannelSymbol(const char Sym)
+	{
+		switch (Sym)
+		{
+			case '#':
+			case '&':
+				return true;
+				break;
+			default:
+				return false;
+				break;
+		}
+	}
+}
 #endif //__NEXUS_HEADER__

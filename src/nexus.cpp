@@ -554,7 +554,7 @@ void NEXUS::NEXUS2IRC(const char *const Message, struct ClientListStruct *const 
 			}
 			
 			//Don't do this for PMs. Just Channels.
-			if (*Search != '#') goto ForwardVerbatim;
+			if (!Util::IsChannelSymbol(*Search)) goto ForwardVerbatim;
 			
 			//We need to make all text reach the other client.
 			std::list<struct ClientListStruct>::iterator Iter = ClientListCore.begin();
@@ -586,7 +586,7 @@ void NEXUS::NEXUS2IRC(const char *const Message, struct ClientListStruct *const 
 		{ //We just need it for when people ask about channels.
 			const char *Derp = SubStrings.Line.WhitespaceJump(Message);
 			
-			if (*Derp != '#') //it's a channel.
+			if (!Util::IsChannelSymbol(*Derp)) //it's not a channel.
 			{
 				goto ForwardVerbatim;
 			}
@@ -747,7 +747,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			Target[Inc] = '\0';
 			
 			//Check if we want to ignore it
-			const unsigned ToCheck = *Target == '#' ? NEXUS_IGNORE_CHANMSG : NEXUS_IGNORE_PRIVMSG;
+			const unsigned ToCheck = Util::IsChannelSymbol(*Target) ? NEXUS_IGNORE_CHANMSG : NEXUS_IGNORE_PRIVMSG;
 			
 			//Ignore it.
 			if (Ignore::Check(Origin, ToCheck)) break;
@@ -757,7 +757,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			if (*Worker == ':') ++Worker;
 			
 			//We have data, add it to the scrollback.
-			Scrollback::AddMsg(Worker, Origin, *Target == '#' ? Target : NULL, time(NULL));
+			Scrollback::AddMsg(Worker, Origin, Util::IsChannelSymbol(*Target) ? Target : NULL, time(NULL));
 			
 			goto ForwardVerbatim;
 		}
@@ -765,7 +765,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 		{
 			unsigned Inc = 0;
 			char NewTopic[1024];
-			char Channel[256], *Worker = strchr((char*)Message, '#');
+			char Channel[256], *Worker = strpbrk((char*)Message, "#&");
 			class ChannelList *ChannelStruct = NULL;
 			
 			if (!Worker) return; //Corrupt data.
@@ -798,7 +798,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 		case IRCMSG_TOPICORIGIN:
 		{ //Where the topic came from.
 			char Channel[256], Setter[256];
-			char *Worker = (char*)strchr(Message, '#');
+			char *Worker = (char*)strpbrk(Message, "#&");
 			unsigned WhenSet = 0; //When the topic was set.
 			unsigned Inc = 0;
 			class ChannelList *ChannelStruct = NULL;
@@ -841,7 +841,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 		case IRCMSG_NAMES: //The server is replying to a names command.
 		{
 			unsigned Inc = 0;
-			const char *Search = strchr(Message, '#');
+			const char *Search = strpbrk(Message, "#&");
 			char NamesChannel[512];
 			char NamesNick[64]; //Used by the do-while loop.
 			class ChannelList *ChannelStruct = NULL;
@@ -1074,7 +1074,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 		}
 		case IRCMSG_MODE:
 		{
-			const char *Worker = strchr(Message, '#');
+			const char *Worker = strpbrk(Message, "#&");
 			char Channel[256], Nick[64];
 			struct UserStruct *UserStruct = NULL;
 			class ChannelList *ChannelStruct = NULL;
