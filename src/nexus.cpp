@@ -182,7 +182,7 @@ void NEXUS::MasterLoop(void)
 					Server::NukeClient(Client->Descriptor);
 					continue;
 				}
-				
+
 				NEXUS::NEXUS2IRC(ClientBuf, Client);
 				continue;
 			}
@@ -585,15 +585,20 @@ void NEXUS::NEXUS2IRC(const char *const Message, struct ClientListStruct *const 
 				goto ForwardVerbatim;
 			}
 			
+			char Chan[128];
+			//Not a request for just info on the channel's mode.
+			SubStrings.Copy(Chan, Derp, sizeof Chan);
+			SubStrings.StripTrailingChars(Chan, " "); //Some clients are retarded and will send trailing spaces.
+			
 			//They wanted a channel's mode.
-			ChannelList *Obj = State::LookupChannel(Derp);
+			ChannelList *Obj = State::LookupChannel(Chan);
 			
 			if (!Obj || !*Obj->GetChannelModes() || !*Obj->GetChannelTime()) goto ForwardVerbatim;
 			
-			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 324 %s %s %s\r\n", IRCConfig.Nick, Derp, Obj->GetChannelModes());
+			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 324 %s %s %s\r\n", IRCConfig.Nick, Obj->GetChannelName(), Obj->GetChannelModes());
 			Client->SendLine(OutBuf);
 			
-			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 329 %s %s %s\r\n", IRCConfig.Nick, Derp, Obj->GetChannelTime());
+			snprintf(OutBuf, sizeof OutBuf, ":" NEXUS_FAKEHOST " 329 %s %s %s\r\n", IRCConfig.Nick, Obj->GetChannelName(), Obj->GetChannelTime());
 			Client->SendLine(OutBuf);
 			
 			break;
