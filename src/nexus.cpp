@@ -156,6 +156,9 @@ void NEXUS::MasterLoop(void)
 					Exit(1);
 				}
 				
+#ifdef DEBUG
+				printf("IRC %s:%hu: \"%s\"\n", IRCConfig.Server, IRCConfig.PortNum, IRCBuf);
+#endif //DEBUG
 				//Process the data.
 				IRC::Loop(IRCBuf);
 				continue;
@@ -183,6 +186,9 @@ void NEXUS::MasterLoop(void)
 					continue;
 				}
 
+#ifdef DEBUG
+				printf("Client %d: \"%s\"\n", Client->Descriptor, ClientBuf);
+#endif //DEBUG
 				NEXUS::NEXUS2IRC(ClientBuf, Client);
 				continue;
 			}
