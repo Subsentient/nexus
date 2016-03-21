@@ -543,6 +543,16 @@ bool ClientListStruct::WriteQueue_Pop(void)
 	{
 		Net::Write(this->Descriptor, Out.c_str(), Out.length());
 	}
+	catch (Net::Errors::BlockingError Err)
+	{
+		if (Err.BytesSentBeforeBlocking > 0)
+		{
+			std::string &Str = this->WriteQueue.front();
+			
+			Str = Str.c_str() + Err.BytesSentBeforeBlocking;
+		}
+		goto End;
+	}
 	catch (Net::Errors::Any)
 	{ //We will probably get Net::Errors::BlockingError.
 		goto End;

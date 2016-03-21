@@ -106,7 +106,7 @@ void Net::Write(int const Descriptor, const void *InMsg, unsigned WriteSize)
 			if (errno == EWOULDBLOCK)
 #endif //WIN
 			{
-				throw Net::Errors::BlockingError();
+				throw Net::Errors::BlockingError(TotalTransferred);
 			}
 			else
 			{

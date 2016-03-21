@@ -24,6 +24,9 @@ namespace Net
 		};
 		class BlockingError : public Any
 		{
+		public:
+			const unsigned BytesSentBeforeBlocking;
+			BlockingError(unsigned BytesSent) : BytesSentBeforeBlocking(BytesSent) {}
 		};
 	}
 	bool InitServer(unsigned short PortNum);
