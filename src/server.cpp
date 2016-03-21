@@ -548,8 +548,9 @@ bool ClientListStruct::WriteQueue_Pop(void)
 		if (Err.BytesSentBeforeBlocking > 0)
 		{
 			std::string &Str = this->WriteQueue.front();
+			std::string New = Str;
 			
-			Str = Str.c_str() + Err.BytesSentBeforeBlocking;
+			Str = New.c_str() + Err.BytesSentBeforeBlocking;
 		}
 		goto End;
 	}
