@@ -17,6 +17,7 @@ namespace Ignore
 	bool Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange);
 	bool SaveDB(void);
 	void LoadDB(void);
+	void SendIgnoreList(struct ClientListStruct *Client);
 }
 
 

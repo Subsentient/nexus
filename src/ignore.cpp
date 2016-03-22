@@ -28,6 +28,49 @@ namespace Ignore
 	static bool Add(const char *Message, const unsigned WhatToBlock);
 }
 
+
+void Ignore::SendIgnoreList(struct ClientListStruct *Client)
+{
+	std::list<struct IgnoreList>::iterator Iter = IgnoreCore.begin();
+	
+	if (IgnoreCore.empty())
+	{
+		Client->SendNxCtlPrivmsg("No ignored vhosts found.");
+		return;
+	}
+	
+	for (; Iter != IgnoreCore.end(); ++Iter)
+	{
+		std::string Out = std::string(Iter->Nick) + "!" + Iter->Ident + "@" + Iter->Mask + ": ";
+		
+		if ((Iter->WhatToBlock & NEXUS_IGNORE_ALL) == NEXUS_IGNORE_ALL)
+		{
+			Out += "ALL";
+			goto Jumpy;
+		}
+	
+		if ((Iter->WhatToBlock & NEXUS_IGNORE_PRIVMSG) == NEXUS_IGNORE_PRIVMSG)
+		{
+			Out += "PRIVMSG,";
+		}
+		if ((Iter->WhatToBlock & NEXUS_IGNORE_CHANMSG) == NEXUS_IGNORE_CHANMSG)
+		{
+			Out += "CHANMSG,";
+		}
+		if ((Iter->WhatToBlock & NEXUS_IGNORE_NOTICE) == NEXUS_IGNORE_NOTICE)
+		{
+			Out += "NOTICE,";
+		}
+		if ((Iter->WhatToBlock & NEXUS_IGNORE_VISIBLE) == NEXUS_IGNORE_VISIBLE)
+		{
+			Out += "VISIBLE,";
+		}
+		
+		if (Out[Out.length() - 1] == ',') Out[Out.length() - 1] = '\0';
+	Jumpy:
+		Client->SendNxCtlPrivmsg(Out.c_str());
+	}
+}
 static bool Ignore::Add(const char *Message, const unsigned WhatToBlock)
 { //Success if the broken down nick/ident/mask makes sense and can be added.
 	
@@ -188,5 +231,4 @@ void Ignore::Shutdown(void)
 {
 	IgnoreCore.clear();
 }
-
 

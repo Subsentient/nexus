@@ -42,6 +42,7 @@ public:
 		
 	///Safe function: Adds \r\n to end of the string before sending if we do not.
 	void SendLine(const char *const String);
+	void SendNxCtlPrivmsg(const char *const String);
 	bool Ping(void);
 	bool CompletePing(void);
 	

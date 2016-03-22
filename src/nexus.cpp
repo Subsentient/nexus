@@ -1366,6 +1366,13 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 	}
 	else if (!strcmp(PrimaryCommand, "ignore"))
 	{
+		
+		if (SubStrings.Compare(Argument, "list"))
+		{
+			Ignore::SendIgnoreList(Client);
+			return;
+		}
+		
 		const char *Iter = Argument;
 		
 		char VHost[1024] = { 0 };
@@ -1396,8 +1403,7 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 					Adding = true;
 					break;
 				default:
-					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Missing operator for blockages list.\r\n", IRCConfig.Nick);
-					Client->SendLine(OutBuf);
+					Client->SendNxCtlPrivmsg("Missing operator for blockages list.");
 					break;
 			}
 			
@@ -1423,8 +1429,8 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 			}
 			else
 			{
-				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Bad ignore flag \"%s\"\r\n", IRCConfig.Nick, FlagData);
-				Client->SendLine(OutBuf);
+				snprintf(OutBuf, sizeof OutBuf, "Bad ignore flag \"%s\"", FlagData);
+				Client->SendNxCtlPrivmsg(OutBuf);
 				continue;
 			}
 			
@@ -1432,16 +1438,16 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 			
 			if (Ignore::Modify(VHost, Adding, Flag))
 			{
-				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Ignore flag %s %s for %s\r\n", IRCConfig.Nick,
+				snprintf(OutBuf, sizeof OutBuf, "Ignore flag %s %s for %s",
 						FlagData, Adding ? "enabled" : "disabled", VHost);
-				Client->SendLine(OutBuf);
+				Client->SendNxCtlPrivmsg(OutBuf);
 				continue;
 			}
 			else
 			{
-				snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG %s :Failed to %s flag %s for %s\r\n", IRCConfig.Nick,
+				snprintf(OutBuf, sizeof OutBuf, "Failed to %s flag %s for %s\r\n",
 						Adding ? "enable" : "disable", FlagData, VHost);
-				Client->SendLine(OutBuf);
+				Client->SendNxCtlPrivmsg(OutBuf);
 				continue;
 			}
 		}

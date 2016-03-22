@@ -492,6 +492,7 @@ bool ClientListStruct::CompletePing(void)
 	return true;
 }
 
+
 ClientListStruct::ClientListStruct(const int InDescriptor, const char *IP, const char *OriginalNick, const char *Ident)
 	: WaitingForPing(false), PingSentTime(0), PingRecvTime(time(NULL)), Descriptor(InDescriptor)
 { //PingRecvTime is initialized with a real time so that the server doesn't send pings instantly.
@@ -499,12 +500,24 @@ ClientListStruct::ClientListStruct(const int InDescriptor, const char *IP, const
 	SubStrings.Copy(this->OriginalNick, OriginalNick, sizeof this->OriginalNick);
 	SubStrings.Copy(this->Ident, Ident, sizeof this->Ident);
 }
-	
+
 ClientListStruct::ClientListStruct(void)
 	: WaitingForPing(false), PingSentTime(0), PingRecvTime(time(NULL)), Descriptor(0)
 {
 }
 
+
+void ClientListStruct::SendNxCtlPrivmsg(const char *const String)
+{
+	std::string Out = std::string(":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG ") + IRCConfig.Nick + " :" + String;
+	
+	if (!SubStrings.EndsWith("\r\n", Out.c_str()))
+	{ //SendLine() does the same thing, but we're aiming for consistency and safety.
+		Out += "\r\n";
+	}
+	
+	this->SendLine(Out.c_str());
+}
 
 void ClientListStruct::SendLine(const char *const String)
 {
