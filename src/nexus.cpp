@@ -69,6 +69,22 @@ void NEXUS::ProcessIdleActions(void)
 	}
 }
 
+void NEXUS::CleanTerminate(const int ExitCode, const char *const QuitReason)
+{
+	Server::SendQuit(-1, QuitReason); //Tell all clients to quit.
+	IRC::Disconnect(); //Disconnect from the IRC server.
+	Scrollback::Shutdown(); //Free scrollback memory.
+	Ignore::SaveDB(); //Store any changes to the ignore database.
+	Ignore::Shutdown(); //And then free the memory for it.
+	Server::ClientList::Shutdown(); //And release all client data.
+	State::ShutdownChannelList(); //Bring down the list of channels and users. Destructors for user lists called automatically by C++.
+	
+#ifdef DEBUG
+	fprintf(stderr, "Clean termination of NEXUS invoked. Reason was \"%s\".\n", QuitReason);
+#endif //DEBUG
+	Exit(ExitCode);
+}
+
 void NEXUS::MasterLoop(void)
 {
 	while (1)
@@ -150,10 +166,7 @@ void NEXUS::MasterLoop(void)
 					snprintf(OutBuf, sizeof OutBuf, ":" CONTROL_NICKNAME "!NEXUS@NEXUS NOTICE %s :NEXUS has lost the connection to %s:%hu and is shutting down.\r\n", IRCConfig.Nick, IRCConfig.Server, IRCConfig.PortNum);		
 					Server::ForwardToAll(OutBuf);
 					
-					Server::SendQuit(-1, "NEXUS has lost the connection to the IRC server."); //Now make them quit.
-					Net::ShutdownServer();
-					
-					Exit(1);
+					NEXUS::CleanTerminate(1, "NEXUS has lost the connection to the IRC server.");
 				}
 				
 #ifdef DEBUG
@@ -365,6 +378,14 @@ int main(int argc, char **argv)
 				strncpy(NEXUSConfig.ServerPassword, ArgData, sizeof NEXUSConfig.ServerPassword - 1);
 				NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
 			}
+			else if (SubStrings.StartsWith("--ignoredbfile=", argv[Inc]))
+			{
+				ArgData = argv[Inc] + sizeof "--ignoredbfile=" - 1;
+				
+				if (!*ArgData) continue; //Uses default or previously specified.
+				
+				IgnoreDBFile = ArgData;
+			}
 #ifndef WIN
 			else if (!strcmp(argv[Inc], "--background"))
 			{
@@ -426,6 +447,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	Ignore::LoadDB(); //if there's a database to remember, do it.
 #ifndef WIN
 	if (Background)
 	{
@@ -1250,10 +1272,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 				SubStrings.StripTrailingChars(OutBuf, "\r\n");
 				puts(OutBuf);
 				
-				IRC::Disconnect(); //Close the IRC server connection.
-				Server::SendQuit(-1, "IRC server sent NEXUS a QUIT command."); //Tell all clients to quit.
-				Net::ShutdownServer(); //Bring down the NEXUS server.
-				Exit(1);
+				NEXUS::CleanTerminate(0, "IRC server sent NEXUS a quit command.");
 			}
 			
 			//Yay! Not us!
@@ -1296,19 +1315,8 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		
 		
 		//Tell all clients to quit.
-		Server::SendQuit(-1, "A quit command was received from NEXUS' control nickname.");
 		
-		//Disconnect from the IRC server.
-		IRC::Disconnect();
-		
-		//Bring down the NEXUS server.
-		Net::ShutdownServer();
-		
-		//Clean up some stuff.
-		Scrollback::Shutdown();
-		Ignore::Shutdown();
-		State::ShutdownChannelList();
-		Server::ClientList::Shutdown();
+		NEXUS::CleanTerminate(0, "A quit command was received from NEXUS' control nickname.");
 		
 		Exit(0);
 	}

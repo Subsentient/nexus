@@ -12,6 +12,7 @@
 
 #include "config.h"
 #include "nexus.h"
+#include "ignore.h"
 #include "substrings/substrings.h"
 #define CONFIG_FILE "NEXUS.conf"
 
@@ -177,11 +178,17 @@ bool Config::ReadConfig(void)
 			strncpy(NEXUSConfig.ServerPassword, CopyFrom, sizeof NEXUSConfig.ServerPassword - 1);
 			NEXUSConfig.ServerPassword[sizeof NEXUSConfig.ServerPassword - 1] = '\0';
 		}
-		else if (!SubStrings.StartsWith("NEXUS.ClientPingoutTime=", LineData))
+		else if (SubStrings.StartsWith("NEXUS.ClientPingoutTime=", LineData))
 		{
 			CopyFrom = LineData + sizeof "NEXUS.ClientPingoutTime=" - 1;
 			
 			NEXUSConfig.ClientPingoutTime = atoi(CopyFrom);
+		}
+		else if (SubStrings.StartsWith("NEXUS.IgnoreDBFile=", LineData))
+		{
+			CopyFrom = LineData + sizeof "NEXUS.IgnoreDBFile=" - 1;
+			
+			IgnoreDBFile = CopyFrom;
 		}
 		else if (!SubStrings.StartsWith("NEXUS.ClientPingInterval=", LineData))
 		{

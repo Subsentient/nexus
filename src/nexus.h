@@ -23,6 +23,7 @@ namespace NEXUS
 	void DescriptorSet_Add(const int Descriptor);
 	bool DescriptorSet_Del(const int Descriptor);
 	void ProcessIdleActions(void);
+	void CleanTerminate(const int ExitCode, const char *const QuitReason = "No reason provided");
 }
 
 namespace Util

@@ -8,17 +8,6 @@
 #define NEXUS_IGNORE_VISIBLE (1U << 3) //Notices
 #define NEXUS_IGNORE_ALL (NEXUS_IGNORE_CHANMSG | NEXUS_IGNORE_PRIVMSG | NEXUS_IGNORE_NOTICE | NEXUS_IGNORE_VISIBLE)//Everything.
 
-
-//Structs
-struct IgnoreList
-{
-	char Nick[64], Ident[64], Mask[256];
-	unsigned WhatToBlock;
-	
-	struct IgnoreList *Next, *Prev;
-};
-
-
 //Functions
 namespace Ignore
 {
@@ -26,6 +15,10 @@ namespace Ignore
 	bool Check_Separate(const char *const Nick, const char *const Ident, const char *const Mask, const unsigned WhatToCheck);
 	void Shutdown(void);
 	bool Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange);
-	bool Add(const char *Message, const unsigned WhatToBlock);
+	bool SaveDB(void);
+	void LoadDB(void);
 }
-	
+
+
+//Globals
+extern std::string IgnoreDBFile;

@@ -132,7 +132,11 @@ void Server::SendQuit(const int Descriptor, const char *const Reason)
 			snprintf(OutBuf, sizeof OutBuf, ":%s!%s@%s QUIT :Disconnected from NEXUS.\r\n", IRCConfig.Nick, Iter->Ident, Iter->IP);
 		}
 		
-		Iter->SendLine(OutBuf);
+		try
+		{
+			Net::Write(Iter->Descriptor, OutBuf, strlen(OutBuf));
+		}
+		catch (...) {}
 	}
 }
 

@@ -4,51 +4,49 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "substrings/substrings.h"
 #include "irc.h"
 #include "ignore.h"
 #include "nexus.h"
-static struct IgnoreList *IgnoreCore;
+
+#define IGNOREDB_FILE "ignore.db"
+
+std::string IgnoreDBFile = IGNOREDB_FILE;
+
+struct IgnoreList
+{
+	char Nick[64], Ident[64], Mask[64];
+	unsigned WhatToBlock;
+};
+
+static std::list<struct IgnoreList> IgnoreCore;
 
 namespace Ignore
 {
-	static bool Del(struct IgnoreList *Delete);
+	static bool Add(const char *Message, const unsigned WhatToBlock);
 }
 
-bool Ignore::Add(const char *Message, const unsigned WhatToBlock)
+static bool Ignore::Add(const char *Message, const unsigned WhatToBlock)
 { //Success if the broken down nick/ident/mask makes sense and can be added.
-	struct IgnoreList *Worker = IgnoreCore;
 	
-	char Nick[sizeof ((struct IgnoreList*)0)->Nick];
-	char Ident[sizeof ((struct IgnoreList*)0)->Ident];
-	char Mask[sizeof ((struct IgnoreList*)0)->Mask];
+	char Nick[64];
+	char Ident[64];
+	char Mask[128];
 	
 	if (!IRC::BreakdownNick(Message, Nick, Ident, Mask))
 	{ //Bad or corrupted input.
 		return false;
 	}
 	
-	if (!Worker)
-	{
-		IgnoreCore = Worker = (struct IgnoreList*)calloc(1, sizeof(struct IgnoreList));
-	}
-	else
-	{
-		while (Worker->Next) Worker = Worker->Next;
+	struct IgnoreList Temp;
+	Temp.WhatToBlock = WhatToBlock;
+	SubStrings.Copy(Temp.Nick, Nick, sizeof Temp.Nick);
+	SubStrings.Copy(Temp.Ident, Ident, sizeof Temp.Ident);
+	SubStrings.Copy(Temp.Mask, Mask, sizeof Temp.Mask);
 		
-		Worker->Next = (struct IgnoreList*)calloc(1, sizeof(struct IgnoreList));
-		Worker->Next->Prev = Worker;
-		Worker = Worker->Next;
-	}
-	
-	
-	SubStrings.Copy(Worker->Nick, Nick, sizeof Worker->Nick);
-	SubStrings.Copy(Worker->Ident, Ident, sizeof Worker->Ident);
-	SubStrings.Copy(Worker->Mask, Mask, sizeof Worker->Mask);
-	
-	Worker->WhatToBlock = WhatToBlock;
-	
+	IgnoreCore.push_back(Temp);
 	return true;
 }
 
@@ -63,20 +61,20 @@ bool Ignore::Check_Separate(const char *const Nick, const char *const Ident, con
 
 bool Ignore::Check(const char *Message, const unsigned WhatToCheck)
 { //See if a message originates/user is blocked.
-	struct IgnoreList *Worker = IgnoreCore;
+	std::list<struct IgnoreList>::iterator Iter = IgnoreCore.begin();
 	
-	char CheckNick[sizeof ((struct IgnoreList*)0)->Nick];
-	char CheckIdent[sizeof ((struct IgnoreList*)0)->Ident];
-	char CheckMask[sizeof ((struct IgnoreList*)0)->Mask];
+	char CheckNick[64];
+	char CheckIdent[64];
+	char CheckMask[128];
 	
 	IRC::BreakdownNick(Message, CheckNick, CheckIdent, CheckMask);
 	
-	for (; Worker; Worker = Worker->Next)
+	for (; Iter != IgnoreCore.end(); ++Iter)
 	{
-		if ((WhatToCheck & Worker->WhatToBlock) == WhatToCheck &&
-			(*Worker->Nick == '*' || SubStrings.Compare(Worker->Nick, CheckNick)) &&
-			(*Worker->Ident == '*' || SubStrings.Compare(Worker->Ident, CheckIdent)) &&
-			(*Worker->Mask == '*' || SubStrings.Compare(Worker->Mask, CheckMask)))
+		if ((WhatToCheck & Iter->WhatToBlock) == WhatToCheck &&
+			(*Iter->Nick == '*' || SubStrings.Compare(Iter->Nick, CheckNick)) &&
+			(*Iter->Ident == '*' || SubStrings.Compare(Iter->Ident, CheckIdent)) &&
+			(*Iter->Mask == '*' || SubStrings.Compare(Iter->Mask, CheckMask)))
 		{
 			return true;
 		}
@@ -86,35 +84,35 @@ bool Ignore::Check(const char *Message, const unsigned WhatToCheck)
 
 bool Ignore::Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange)
 {
-	char Nick[sizeof ((struct IgnoreList*)0)->Nick];
-	char Ident[sizeof ((struct IgnoreList*)0)->Ident];
-	char Mask[sizeof ((struct IgnoreList*)0)->Mask];
+	char Nick[64];
+	char Ident[64];
+	char Mask[128];
 	
 	IRC::BreakdownNick(VHost, Nick, Ident, Mask);
 	
-	struct IgnoreList *Worker = IgnoreCore;
+	std::list<struct IgnoreList>::iterator Iter = IgnoreCore.begin();
 	
 	
-	for (; Worker; Worker = Worker->Next)
+	for (; Iter != IgnoreCore.end(); ++Iter)
 	{
-		if (SubStrings.Compare(Nick, Worker->Nick) &&
-			SubStrings.Compare(Ident, Worker->Ident) &&
-			SubStrings.Compare(Mask, Worker->Mask))
+		if (SubStrings.Compare(Nick, Iter->Nick) &&
+			SubStrings.Compare(Ident, Iter->Ident) &&
+			SubStrings.Compare(Mask, Iter->Mask))
 		{
 			//This is it.
 			if (Adding)
 			{
-				if (Worker->WhatToBlock == (Worker->WhatToBlock | WhatToChange)) return false;
+				if (Iter->WhatToBlock == (Iter->WhatToBlock | WhatToChange)) return false;
 				
-				Worker->WhatToBlock |= WhatToChange;
+				Iter->WhatToBlock |= WhatToChange;
 			}
 			else
 			{	
-				Worker->WhatToBlock &= ~WhatToChange;
+				Iter->WhatToBlock &= ~WhatToChange;
 				
-				if (!Worker->WhatToBlock)
+				if (!Iter->WhatToBlock)
 				{
-					Ignore::Del(Worker);
+					IgnoreCore.erase(Iter);
 				}
 			}
 			return true;
@@ -130,42 +128,65 @@ bool Ignore::Modify(const char *const VHost, const bool Adding, const unsigned W
 	return false;
 }
 
-void Ignore::Shutdown(void)
-{
-	struct IgnoreList *Worker = IgnoreCore, *Next = NULL;
-	
-	for (; Worker; Worker = Next)
-	{
-		Next = Worker->Next;
-		free(Worker);
+bool Ignore::SaveDB(void)
+{	
+	if (IgnoreCore.empty())
+	{ //No data, delete the file.
+		return !remove(IgnoreDBFile.c_str());
 	}
-	IgnoreCore = NULL;
+	
+	FILE *Desc = fopen(IgnoreDBFile.c_str(), "wb");
+	
+	if (!Desc) return false;
+	
+	std::list<struct IgnoreList>::iterator Iter = IgnoreCore.begin();
+	
+	for (; Iter != IgnoreCore.end(); ++Iter)
+	{
+		fwrite(&*Iter, sizeof(struct IgnoreList), 1, Desc);
+	}
+	
+	fclose(Desc);
+	return true;
+	
 }
 
-static bool Ignore::Del(struct IgnoreList *Delete)
+void Ignore::LoadDB(void)
 {
+	if (!IgnoreCore.empty()) Ignore::Shutdown(); //Wipe it first.
 	
-	if (Delete == IgnoreCore)
+	struct stat FileStat;
+	FILE *Desc = NULL;
+	
+	
+	if (stat(IgnoreDBFile.c_str(), &FileStat) != 0 || !(Desc = fopen(IgnoreDBFile.c_str(), "rb")))
 	{
-		if (IgnoreCore->Next)
-		{
-			IgnoreCore = IgnoreCore->Next;
-			IgnoreCore->Prev = NULL;
-			free(Delete);
-		}
-		else
-		{
-			IgnoreCore = NULL;
-			free(Delete);
-		}
-	}
-	else
-	{
-		Delete->Prev->Next = Delete->Next;
-		if (Delete->Next) Delete->Next->Prev = Delete->Prev;
-		free(Delete);
+		return;
 	}
 	
-	return true;
+	if (FileStat.st_size == 0) //Empty.
+	{
+		fclose(Desc);
+		return;
+	}
+	const unsigned NumElements = FileStat.st_size / sizeof(struct IgnoreList);	
+	
+	for (unsigned Inc = 0; Inc < NumElements; ++Inc)
+	{
+		struct IgnoreList Temp;
+		fread(&Temp, sizeof(struct IgnoreList), 1, Desc);
+#ifdef DEBUG
+		printf("Ignore table specified and loaded for %s!%s@%s.\n", Temp.Nick, Temp.Ident, Temp.Mask);
+#endif //DEBUG
+		IgnoreCore.push_back(Temp);
+	}
+	
+	fclose(Desc);
 }
+
+void Ignore::Shutdown(void)
+{
+	IgnoreCore.clear();
+}
+
 
