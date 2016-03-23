@@ -1381,6 +1381,13 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		//Get the vhost to perform the operation on
 		SubStrings.CopyUntilC(VHost, sizeof VHost, &Iter, " ", true);
 		
+		
+		if (!Iter)
+		{
+			Client->SendNxCtlPrivmsg("No flags specified for modification.");
+			return;
+		}
+		
 		//Get the list of blockages
 		SubStrings.Copy(Blockages, Iter, sizeof Blockages);
 	
