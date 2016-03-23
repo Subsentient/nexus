@@ -953,7 +953,9 @@ void NEXUS::IRC2NEXUS(const char *Message)
 				//Delete them from our users list.
 				class ChannelList *const Chan = State::LookupChannel(Channel);
 				if (!Chan) break; ///Baaaad data.
-				
+
+				if (!Chan->GetUser(Nick)) break;
+								
 				Chan->DelUser(Nick);
 				
 				//And tell users they are gone.
