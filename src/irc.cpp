@@ -154,6 +154,7 @@ enum IRCMessageType IRC::GetMessageType(const char *InStream_)
 	else if (!strcmp(Command, "INVITE")) return IRCMSG_INVITE;
 	else if (!strcmp(Command, "332") || !strcmp(Command, "TOPIC")) return IRCMSG_TOPIC;
 	else if (!strcmp(Command, "333")) return IRCMSG_TOPICORIGIN;
+	else if (!strcmp(Command, "352")) return IRCMSG_WHO;
 	else if (!strcmp(Command, "353") || !strcmp(Command, "NAMES")) return IRCMSG_NAMES;
 	else if (!strcmp(Command, "324")) return IRCMSG_CHANMODE1;
 	else if (!strcmp(Command, "329")) return IRCMSG_CHANMODE2;
