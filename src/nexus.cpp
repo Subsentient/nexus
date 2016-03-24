@@ -273,7 +273,7 @@ int main(int argc, char **argv)
 		{
 			if (!strcmp("--help", argv[Inc]))
 			{
-				printf("Available options:\n\n"
+				fputs("Available options:\n\n"
 						"--configfile=\n"
 #ifndef WIN
 						"--background\n"
@@ -289,7 +289,8 @@ int main(int argc, char **argv)
 						"--nexusport=6667\n"
 						"--nexuspassword=password\n"
 						"--scrollbackenabled=true/false\n"
-						"--scrollbackkeeptime=(time)\n");
+						"--scrollbacktimeformat=%I:%H:%M %p\n"
+						"--scrollbackkeeptime=(time)\n", stdout);
 				Exit(0);
 			}
 			else if (!strncmp(argv[Inc], "--configfile=", sizeof "--configfile=" - 1))
@@ -399,6 +400,10 @@ int main(int argc, char **argv)
 				
 				if (!strcmp(ArgData, "true")) NEXUSConfig.ScrollbackEnabled = true;
 				else NEXUSConfig.ScrollbackEnabled = false;
+			}
+			else if (SubStrings.StartsWith("--scrollbacktimeformat=", argv[Inc]))
+			{
+				Scrollback::SetTimeFormat(strchr(argv[Inc], '=') + 1);
 			}
 			else if (!strncmp(argv[Inc], "--scrollbackkeeptime=", sizeof "--scrollbackkeeptime=" - 1))
 			{
@@ -589,8 +594,7 @@ void NEXUS::NEXUS2IRC(const char *const Message, struct ClientListStruct *const 
 			}
 			
 			//Now we want to add it to our scrollback.
-			Scrollback::AddMsg(strchr(Search, ':') + 1, NULL, Target, time(NULL));
-			
+			Scrollback::Add(time(NULL), IRCMSG_PRIVMSG, strchr(Search, ':') + 1, NULL, Target);
 			goto ForwardVerbatim;
 		}
 		case SERVERMSG_WHO:
@@ -779,8 +783,8 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			if (*Worker == ':') ++Worker;
 			
 			//We have data, add it to the scrollback.
-			Scrollback::AddMsg(Worker, Origin, Util::IsChannelSymbol(*Target) ? Target : NULL, time(NULL));
-			
+			Scrollback::Add(time(NULL), IRCMSG_PRIVMSG, Worker, Origin, Util::IsChannelSymbol(*Target) ? Target : NULL);
+
 			goto ForwardVerbatim;
 		}
 		case IRCMSG_TOPIC: //Either the server sent us a topic or someone has changed it.

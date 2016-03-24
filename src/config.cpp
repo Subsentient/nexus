@@ -13,6 +13,8 @@
 #include "config.h"
 #include "nexus.h"
 #include "ignore.h"
+#include "scrollback.h"
+
 #include "substrings/substrings.h"
 #define CONFIG_FILE "NEXUS.conf"
 
@@ -210,6 +212,10 @@ bool Config::ReadConfig(void)
 			
 			if (!strcmp(CopyFrom, "true")) NEXUSConfig.ScrollbackEnabled = true;
 			else NEXUSConfig.ScrollbackEnabled = false;
+		}
+		else if (SubStrings.StartsWith("NEXUS.ScrollbackTimeFormat=", LineData))
+		{
+			Scrollback::SetTimeFormat(LineData + sizeof "NEXUS.ScrollbackTimeFormat=" - 1);
 		}
 		else if (!strncmp(LineData, "NEXUS.ScrollbackKeepTime=", sizeof "NEXUS.ScrollbackKeepTime=" - 1))
 		{

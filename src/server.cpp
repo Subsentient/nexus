@@ -190,52 +190,7 @@ static void Server::SendIRCWelcome(const int ClientDescriptor)
 	Client->SendLine(OutBuf);
 	
 	//Send all scrollback.
-	struct ScrollbackList *SWorker = ScrollbackCore;
-	char ScrollBuf[2048], SelfOrigin[256];
-	
-	snprintf(SelfOrigin, sizeof SelfOrigin, "%s!%s@%s", IRCConfig.Nick, Client->Ident, Client->IP);
-	
-	for (; SWorker; SWorker = SWorker->Next)
-	{ //Loop through sending the scrollback.
-		struct tm *TimeStruct = localtime(&SWorker->Time);
-		char TimeBuf[128];
-		const char *Origin = SWorker->Origin;
-		
-		strftime(TimeBuf, sizeof TimeBuf, "%I:%M:%S %p %Y-%m-%d", TimeStruct);
-
-		if (!Origin)
-		{ //We want to use ourselves as the origin if none specified.
-			Origin = SelfOrigin;
-		}
-		
-		if (SubStrings.StartsWith("\1ACTION ", SWorker->Msg))
-		{
-			char *NewMsg = (char*)calloc(strlen(SWorker->Msg) + 1, 1);
-			
-			//Don't bother trying to understand the arithmetic here.
-			SubStrings.Copy(NewMsg, SWorker->Msg + (sizeof "\1ACTION " - 1), (strlen(SWorker->Msg) + 1) - (sizeof "\1ACTION " - 1));
-			
-			//Chop off the \x01 at the end.
-			SubStrings.StripTrailingChars(NewMsg, "\001");
-			
-			//Build the message.
-			char Nick[64], Ident[256], Mask[512];
-			IRC::BreakdownNick(Origin, Nick, Ident, Mask);
-			
-			snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 ** %s %s **\r\n",
-					Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, Nick, NewMsg);
-			free(NewMsg);
-		}
-		else
-		{
-			snprintf(ScrollBuf, sizeof ScrollBuf, ":%s PRIVMSG %s :\0034[%s]\3 %s\r\n",
-				Origin, (SWorker->Target ? SWorker->Target : IRCConfig.Nick), TimeBuf, SWorker->Msg);
-		}
-		
-		//Now send it to the client.
-		Client->SendLine(ScrollBuf);
-	}
-	
+	Scrollback::SendAllToClient(Client);
 }
 
 static void Server::SendChannelNamesList(const class ChannelList *const Channel, struct ClientListStruct *Client)

@@ -6,25 +6,52 @@
 
 #include <time.h> //For time_t
 
+#include "irc.h" //For enum IRCMessageType
+
 ///Structures.
-struct ScrollbackList
+class ScrollbackObj
 {
 	time_t Time; //The time the message was detected by NEXUS.
-	const char *Msg; //The message data. Dynamically allocated on the heap.
-	const char *Origin; //Where the message is from. Either a full mask or a channel. Dynamically allocated..
-	const char *Target; //Who it was intended for, either us or a channel. Set to NULL to indicate a PM. Dynamically allocated.
-	
-	struct ScrollbackList *Next, *Prev;
+	enum IRCMessageType Type;
+	std::string Msg; //The message data. Dynamically allocated on the heap.
+	std::string Origin; //Where the message is from. Either a full mask or a channel.
+	std::string Target; //Who it was intended for, either us or a channel. Keep empty to indicate a PM.
+public:
+	inline time_t GetTime(void) const
+	{
+		return this->Time;
+	}
+	inline enum IRCMessageType GetType(void) const
+	{
+		return this->Type;
+	}
+	inline const char *GetMsg(void) const
+	{
+		return this->Msg.c_str();
+	}
+	inline const char *GetOrigin(void) const
+	{
+		return this->Origin.c_str();
+	}
+	inline const char *GetTarget(void) const
+	{
+		return this->Target.c_str();
+	}
+	ScrollbackObj(const time_t InTime, const enum IRCMessageType InType, const char *InMsg, const char *InOrigin = "", const char *InTarget = "")
+					: Time(InTime), Type(InType), Msg(InMsg), Origin(InOrigin), Target(InTarget)
+	{
+	}
+	ScrollbackObj(void) : Time(0), Type(IRCMSG_INVALID) {}
 };
 
 ///Globals.
-extern struct ScrollbackList *ScrollbackCore;
 
 ///Functions
 namespace Scrollback
 {
-	struct ScrollbackList *AddMsg(const char *Msg, const char *Origin, const char *Target, time_t Time);
-	void DelMsg(struct ScrollbackList *ToDel);
+	void SetTimeFormat(const char *const InFormat);
+	ScrollbackObj *Add(const time_t Time, const enum IRCMessageType Type, const char *Msg, const char *Origin = NULL, const char *Target = NULL);
+	bool SendAllToClient(struct ClientListStruct *Client);
 	void Shutdown(void);
 	void Reap(void);
 }
