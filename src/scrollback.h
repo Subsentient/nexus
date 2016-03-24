@@ -50,10 +50,9 @@ public:
 namespace Scrollback
 {
 	void SetTimeFormat(const char *const InFormat);
-	ScrollbackObj *Add(const time_t Time, const enum IRCMessageType Type, const char *Msg, const char *Origin = NULL, const char *Target = NULL);
+	ScrollbackObj *Add(const time_t Time, const enum IRCMessageType Type, const char *Msg = NULL, const char *Origin = NULL, const char *Target = NULL);
 	bool SendAllToClient(struct ClientListStruct *Client);
 	void Shutdown(void);
-	void Reap(void);
 }
 
 #endif //__SCROLLBACK_HEADER__

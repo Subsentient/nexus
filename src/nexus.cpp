@@ -819,6 +819,8 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			//Copy in the new topic.
 			ChannelStruct->SetTopic(NewTopic);
 			
+			Scrollback::Add(time(NULL), IRCMSG_TOPIC, NewTopic, NULL, Channel);
+			
 			goto ForwardVerbatim;
 		}
 		case IRCMSG_TOPICORIGIN:
@@ -860,6 +862,8 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			//Copy in the time it was set.
 			ChannelStruct->SetWhenSetTopic(WhenSet);
 			
+			Scrollback::Add(time(NULL), IRCMSG_TOPICORIGIN, Setter, NULL, Channel);
+
 			//Now send it to everyone.
 			goto ForwardVerbatim;
 			break;
@@ -1049,6 +1053,17 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			
 			Server::ForwardToAll(NewM.c_str());
 			
+			//Add to scrollback.
+			char Chan[2048];
+			IRC::GetMessageData(Message, Chan);
+
+			if (char *Stamp = strchr(Chan, ' '))
+			{
+				*Stamp = '\0';
+			}
+			
+			Scrollback::Add(time(NULL), MsgType, Message, NULL, MsgType == IRCMSG_NICK ? NULL : Chan);
+
 			switch (MsgType)
 			{
 				char Nick[64], Ident[64], Mask[256];
@@ -1174,6 +1189,9 @@ void NEXUS::IRC2NEXUS(const char *Message)
 			{
 				UserStruct->Modes &= ~ModeLetter;
 			}
+			
+			Scrollback::Add(time(NULL), IRCMSG_MODE, Message, NULL, Channel);
+			
 			goto ForwardVerbatim; //Now send the original message to the clients.
 		}
 		case IRCMSG_KICK:
@@ -1216,6 +1234,7 @@ void NEXUS::IRC2NEXUS(const char *Message)
 				ChanStruct->DelUser(KNick);
 			}
 			
+			Scrollback::Add(time(NULL), IRCMSG_KICK, Message, NULL, KChan);
 			//Now write the message to each client.
 			goto ForwardVerbatim;
 		}
@@ -1273,7 +1292,8 @@ void NEXUS::IRC2NEXUS(const char *Message)
 							"No reason was provided by the server. NEXUS is shutting down.\r\n", IRCConfig.Nick);
 				}
 
-					
+				Scrollback::Add(time(NULL), IRCMSG_QUIT, Message, NULL, NULL);
+				
 				Server::ForwardToAll(OutBuf);
 				SubStrings.StripTrailingChars(OutBuf, "\r\n");
 				puts(OutBuf);

@@ -361,9 +361,6 @@ struct ClientListStruct *Server::AcceptLoop(void)
 		continue;
 	}
 	
-	//Get rid of expired scrollback before we send it to someone.
-	Scrollback::Reap();
-	
 	//Time to welcome them.
 	Server::SendIRCWelcome(Client->Descriptor);
 	

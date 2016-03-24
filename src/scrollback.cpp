@@ -5,6 +5,7 @@
 #include "scrollback.h"
 #include "config.h"
 #include "nexus.h"
+#include "state.h"
 
 #include "substrings/substrings.h"
 #include <stdlib.h>
@@ -22,6 +23,7 @@ static std::string SBTimeFormat = SBTIMEFORMAT_DEFAULT;
 //Static prototypes 
 static void SendPrivmsg(ScrollbackObj *Send, struct ClientListStruct *Client);
 static void SendRaw(ScrollbackObj *Send, struct ClientListStruct *Client);
+static void SBReap(void);
 
 void Scrollback::SetTimeFormat(const char *const InFormat)
 {
@@ -36,21 +38,21 @@ void Scrollback::Shutdown(void)
 
 ScrollbackObj *Scrollback::Add(const time_t Time, const enum IRCMessageType Type, const char *Msg, const char *Origin, const char *Target)
 {
-	ScrollbackObj New(Time, Type, Msg, Origin ? Origin : "", Target ? Target : "");
+	ScrollbackObj New(Time, Type, Msg ? Msg : "", Origin ? Origin : "", Target ? Target : "");
 	
 	ScrollbackCore.push_back(New);
 	
 	return &ScrollbackCore.back();
 }
 
-void Scrollback::Reap(void)
+static void SBReap(void)
 {
 	//Reap expired scrollback.
 	const time_t TimeCompare = time(NULL);
 	
 	for (std::list<class ScrollbackObj>::iterator Iter = ScrollbackCore.begin(); Iter != ScrollbackCore.end(); ++Iter)
 	{
-		if (Iter->GetTime() + NEXUSConfig.ScrollbackKeepTime < TimeCompare)
+		if (Iter->GetTime() + NEXUSConfig.ScrollbackKeepTime < TimeCompare || (*Iter->GetTarget() && !State::LookupChannel(Iter->GetTarget())) )
 		{ //Expired. Reap it.
 			std::list<ScrollbackObj>::iterator NewIter = Iter;
 			++NewIter;
@@ -64,6 +66,8 @@ void Scrollback::Reap(void)
 
 bool Scrollback::SendAllToClient(struct ClientListStruct *Client)
 {
+	SBReap(); //Remove all expired/invalid scrollback before we ever send to anyone.
+	
 	std::list<ScrollbackObj>::iterator Iter = ScrollbackCore.begin();
 	
 	for (; Iter != ScrollbackCore.end(); ++Iter)
@@ -76,7 +80,7 @@ bool Scrollback::SendAllToClient(struct ClientListStruct *Client)
 				SendPrivmsg(Send, Client);
 				break;
 			default:
-				SendRaw(Send, Client);
+				//SendRaw(Send, Client);
 				break;
 		}
 	}
@@ -135,5 +139,8 @@ static void SendPrivmsg(ScrollbackObj *Send, struct ClientListStruct *Client)
 
 static void SendRaw(ScrollbackObj *Send, struct ClientListStruct *Client)
 {
-	Client->SendLine(Send->GetMsg());
+	if (*Send->GetMsg())
+	{
+		Client->SendLine(Send->GetMsg());
+	}
 }
