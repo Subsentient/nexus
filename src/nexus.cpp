@@ -1062,19 +1062,19 @@ void NEXUS::IRC2NEXUS(const char *Message)
 				*Stamp = '\0';
 			}
 			
-			Scrollback::Add(time(NULL), MsgType, Message, NULL, MsgType == IRCMSG_NICK ? NULL : Chan);
+			char Nick[64], Ident[64], Mask[256];
+			
+			IRC::BreakdownNick(Message, Nick, Ident, Mask);
+			
+			Scrollback::Add(time(NULL), MsgType, Message, MsgType == IRCMSG_NICK ? Nick : NULL, MsgType == IRCMSG_NICK ? NULL : Chan);
 
 			switch (MsgType)
-			{
-				char Nick[64], Ident[64], Mask[256];
-				
+			{	
 				case IRCMSG_NICK:
 				{ //Change the nick for them in all channels they exist in.
 					std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
 					char NewNick_[64], *NewNick = NewNick_;
 					
-					//Get their old nick.
-					IRC::BreakdownNick(Message, Nick, Ident, Mask);
 					IRC::GetMessageData(Message, NewNick_);
 					
 					if (*NewNick == ':') ++NewNick;
@@ -1093,7 +1093,6 @@ void NEXUS::IRC2NEXUS(const char *Message)
 					char DaChannel[512], *Search;
 					class ChannelList *ChannelStruct;
 					
-					IRC::BreakdownNick(Message, Nick, Ident, Mask);
 					IRC::GetMessageData(Message, DaChannel);
 					
 					if ((Search = strchr(DaChannel, ' '))) *Search = '\0';

@@ -24,6 +24,7 @@ static std::string SBTimeFormat = SBTIMEFORMAT_DEFAULT;
 static void SendPrivmsg(ScrollbackObj *Send, struct ClientListStruct *Client);
 static void SendRaw(ScrollbackObj *Send, struct ClientListStruct *Client);
 static void SBReap(void);
+static void SBNotify(struct ClientListStruct *Client, const char *ChannelName, const char *Message, bool IsAnnouncement);
 
 void Scrollback::SetTimeFormat(const char *const InFormat)
 {
@@ -137,10 +138,41 @@ static void SendPrivmsg(ScrollbackObj *Send, struct ClientListStruct *Client)
 	Client->SendLine(ScrollBuf);
 }
 
+static void SBNotify(struct ClientListStruct *Client, const char *ChannelName, const char *Message, bool IsAnnouncement)
+{
+	std::string Out = std::string(":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG ") + ChannelName + " :" + Message;
+	
+	if (IsAnnouncement)
+	{
+		Out = " \2\003***\2\3 " + Out + " \2\003***\2\3";
+	}
+	Client->SendLine(Out.c_str());
+}
+
 static void SendRaw(ScrollbackObj *Send, struct ClientListStruct *Client)
 {
 	if (*Send->GetMsg())
 	{
 		Client->SendLine(Send->GetMsg());
+	}
+}
+
+static void SendNickchange(ScrollbackObj *Send, struct ClientListStruct *Client)
+{
+	if (Send->GetType() != IRCMSG_NICK) return;
+	
+	char NewNick[64];
+	IRC::GetMessageData(Send->GetMsg(), NewNick);
+	
+	std::string Msg = std::string(Send->GetOrigin()) + " has changed their nick to " + NewNick;
+	
+	//For each channel this user is in, we need to send a separate message.
+	std::map<std::string, ChannelList>::iterator Iter = ChannelListCore.begin();
+	
+	for (; Iter != ChannelListCore.end(); ++Iter)
+	{
+		ChannelList &Chan = Iter->second;
+		
+		if (!Chan.GetUser(NewNick));
 	}
 }
