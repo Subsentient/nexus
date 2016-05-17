@@ -50,16 +50,13 @@ static void SBReap(void)
 {
 	//Reap expired scrollback.
 	const time_t TimeCompare = time(NULL);
-	
+LoopRestart:
 	for (std::list<class ScrollbackObj>::iterator Iter = ScrollbackCore.begin(); Iter != ScrollbackCore.end(); ++Iter)
 	{
 		if (Iter->GetTime() + NEXUSConfig.ScrollbackKeepTime < TimeCompare || (*Iter->GetTarget() && !State::LookupChannel(Iter->GetTarget())) )
 		{ //Expired. Reap it.
-			std::list<ScrollbackObj>::iterator NewIter = Iter;
-			++NewIter;
-			
 			ScrollbackCore.erase(Iter);
-			Iter = NewIter;
+			goto LoopRestart;
 			continue;
 		}
 	}

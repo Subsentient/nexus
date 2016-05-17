@@ -49,7 +49,7 @@ public:
 ///Functions
 namespace Scrollback
 {
-	void SetTimeFormat(const char *const InFormat);
+	void SetTimeFormat(const char *const InFormat = NULL);
 	ScrollbackObj *Add(const time_t Time, const enum IRCMessageType Type, const char *Msg = NULL, const char *Origin = NULL, const char *Target = NULL);
 	bool SendAllToClient(struct ClientListStruct *Client);
 	void Shutdown(void);
