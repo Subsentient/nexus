@@ -22,9 +22,9 @@ static std::string SBTimeFormat = SBTIMEFORMAT_DEFAULT;
 
 //Static prototypes 
 static void SendPrivmsg(ScrollbackObj *Send, struct ClientListStruct *Client);
-static void SendRaw(ScrollbackObj *Send, struct ClientListStruct *Client);
+//static void SendRaw(ScrollbackObj *Send, struct ClientListStruct *Client);
 static void SBReap(void);
-static void SBNotify(struct ClientListStruct *Client, const char *ChannelName, const char *Message, bool IsAnnouncement);
+//static void SBNotify(struct ClientListStruct *Client, const char *ChannelName, const char *Message, bool IsAnnouncement);
 
 void Scrollback::SetTimeFormat(const char *const InFormat)
 {
@@ -138,6 +138,7 @@ static void SendPrivmsg(ScrollbackObj *Send, struct ClientListStruct *Client)
 	Client->SendLine(ScrollBuf);
 }
 
+#if 0
 static void SBNotify(struct ClientListStruct *Client, const char *ChannelName, const char *Message, bool IsAnnouncement)
 {
 	std::string Out = std::string(":" CONTROL_NICKNAME "!NEXUS@NEXUS PRIVMSG ") + ChannelName + " :" + Message;
@@ -176,3 +177,4 @@ static void SendNickchange(ScrollbackObj *Send, struct ClientListStruct *Client)
 		if (!Chan.GetUser(NewNick));
 	}
 }
+#endif //0
