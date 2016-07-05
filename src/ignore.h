@@ -1,6 +1,6 @@
 /*NEXUS IRC session BNC, by Subsentient. This software is public domain.*/
 #include <limits.h>
-
+#include <string>
 
 #define NEXUS_IGNORE_CHANMSG (1U) //Messages in a channel
 #define NEXUS_IGNORE_PRIVMSG (1U << 1) //PMs
@@ -17,6 +17,7 @@ namespace Ignore
 	bool Modify(const char *const VHost, const bool Adding, const unsigned WhatToChange);
 	bool SaveDB(void);
 	void LoadDB(void);
+	void DeleteDB(void);
 	void SendIgnoreList(struct ClientListStruct *Client);
 }
 

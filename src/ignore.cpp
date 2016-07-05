@@ -28,6 +28,11 @@ namespace Ignore
 	static bool Add(const char *Message, const unsigned WhatToBlock);
 }
 
+void Ignore::DeleteDB(void)
+{
+	IgnoreCore.clear();
+	remove(IgnoreDBFile.c_str());
+}
 
 void Ignore::SendIgnoreList(struct ClientListStruct *Client)
 {

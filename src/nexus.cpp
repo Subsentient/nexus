@@ -1350,6 +1350,11 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		Ignore::SaveDB();
 		Client->SendNxCtlPrivmsg("Ignore database saved.");
 	}
+	else if (!strcmp(PrimaryCommand, "purgeignoredb"))
+	{
+		Ignore::DeleteDB();
+		Client->SendNxCtlPrivmsg("Ignore database purged.");
+	}
 	else if (!strcmp(PrimaryCommand, "status")) //They want a list of clients and whatnot.
 	{
 		
