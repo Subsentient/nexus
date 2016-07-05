@@ -1345,6 +1345,11 @@ static void NEXUS::HandleClientInterface(const char *const Message, struct Clien
 		
 		Exit(0);
 	}
+	else if (!strcmp(PrimaryCommand, "saveignoredb"))
+	{
+		Ignore::SaveDB();
+		Client->SendNxCtlPrivmsg("Ignore database saved.");
+	}
 	else if (!strcmp(PrimaryCommand, "status")) //They want a list of clients and whatnot.
 	{
 		
